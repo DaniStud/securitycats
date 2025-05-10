@@ -37,9 +37,10 @@ async function fetchArticles() {
                 articleDiv.className = "singleArticle"
 
                 articleDiv.innerHTML = `
-                <div class="articleWrapper">  
+                <div class="articleWrapper"> 
                 <div class="articleTitle">Title: ${article.title}</div>
                 <div class="articleContent">Content: ${article.article}</div>
+                <a href="http://localhost:5000/${article.article_id}">Security Cats</a>
                 </div>
                 `
 
