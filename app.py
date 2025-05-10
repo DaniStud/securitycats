@@ -39,5 +39,21 @@ def submit():
         # Handle any server-side errors
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+
+@app.route('/get_articles', methods=['GET'])
+def get_articles():
+    try:
+        # Connect to the database
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)  # Use dictionary=True to get column names as keys
+        cursor.execute("SELECT * FROM articles")  # Fetch all articles
+        articles = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'status': 'success', 'data': articles})
+    except Exception as e:
+        # Handle any server-side errors
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 if __name__ == '__main__':
     app.run(debug=True)
