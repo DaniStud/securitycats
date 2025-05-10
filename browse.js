@@ -27,7 +27,7 @@ async function fetchArticles() {
                 `
 
                 article_section.appendChild(articleDiv);
-                displayNone();
+                // displayNone();
             });
 
 
@@ -48,12 +48,7 @@ async function fetchArticles() {
 //     }
 // }
 
-async function displayNone() {
-    const readButton = document.getElementById("readbtn");
-    if (readButton) {
-        readButton.style.border = "2px solid black";
-    }
-}
+
 
 async function fetchArticleById(articleId) {
     try {
