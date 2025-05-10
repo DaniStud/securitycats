@@ -30,11 +30,24 @@ async function fetchArticles() {
         const result = await response.json();
 
         if (result.status === 'success') {
-            const article = document.createElement("div");
-            const content = document.createTextNode(`Test ${result}`)
-            article.appendChild(content);
             const article_section = document.getElementById("articles");
-            article_section.appendChild(article);
+
+            result.data.forEach(article =>{
+                const articleDiv = document.createElement("div");
+                articleDiv.className = "singleArticle"
+
+                articleDiv.innerHTML = `
+                <div class="articleWrapper">  
+                <div class="articleTitle">Title: ${article.title}</div>
+                <div class="articleContent">Content: ${article.article}</div>
+                </div>
+                `
+
+                article_section.appendChild(articleDiv);
+
+            });
+
+
         } else {
             console.error('Error fetching articles:', result.message);
         }
