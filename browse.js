@@ -1,10 +1,11 @@
-const url = 'http://localhost:5000';
+const DBurl = 'http://localhost:5000';
+const url = 'http://localhost:5500';
 
 document.body.onload = fetchArticles;
 
 async function fetchArticles() {
     try {
-        const response = await fetch(`${url}/get_articles`);
+        const response = await fetch(`${DBurl}/get_articles`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -21,7 +22,7 @@ async function fetchArticles() {
                 <div class="articleWrapper"> 
                 <div class="articleTitle">Title: ${article.title}</div>
                 <div class="articleContent">Content: ${article.article}</div>
-                <a href="${url}/${article.article_id}">Security Cats</a>
+                <a href="${url}/article.html/${article.article_id}">Security Cats</a>
                 </div>
                 `
 
