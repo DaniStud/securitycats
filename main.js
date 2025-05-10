@@ -5,8 +5,15 @@
 
         // Grab the form data (article title)
         const atitle = document.getElementById('atitle').value;
+        const article = document.getElementById('article').value
 
-        console.log("lorem" + atitle)
+        console.log("lorem" + atitle + article)
+
+        if (!atitle || !article) {
+        alert('Both the article title and content are required!');
+        return;
+    }
+
 
         // Send a POST request to the Flask backend
         const res = await fetch('http://localhost:5000/submit_article', {
@@ -14,7 +21,7 @@
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ atitle })
+            body: JSON.stringify({ atitle, article })
         });
 
         // Handle the server response (optional)

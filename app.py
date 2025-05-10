@@ -22,16 +22,14 @@ def submit():
         # Ensure atitle is provided
         if not atitle:
             return jsonify({'status': 'error', 'message': 'Article title is required'}), 400
-        
-        
         if not article:
-            return jsonify({'status': 'error', 'message': 'Article title is required'}), 400
+            return jsonify({'status': 'error', 'message': 'Article content is required'}), 400
         
 
         # Connect to the database and insert the article title
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO articles (title) VALUES (%s, %s)", (atitle, article))
+        cursor.execute("INSERT INTO articles (title, article) VALUES (%s, %s)", (atitle, article))
         conn.commit()
         cursor.close()
         conn.close()
