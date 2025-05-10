@@ -22,12 +22,12 @@ async function fetchArticles() {
                 <div class="articleWrapper"> 
                 <div class="articleTitle">Title: ${article.title}</div>
                 <div class="articleContent">Content: ${article.article}</div>
-                <a href="${url}/article.html/${article.article_id}">Security Cats</a>
+                <a id="readbtn" href="${url}/article.html/${article.article_id}">Security Cats</a>
                 </div>
                 `
 
                 article_section.appendChild(articleDiv);
-
+                displayNone();
             });
 
 
@@ -39,6 +39,21 @@ async function fetchArticles() {
     }
 }
 
+
+
+// async function displayNone() {
+//     const readButton = document.getElementById("readbtn");
+//     if (readButton) {
+//         readButton.style.border = "2px solid black";
+//     }
+// }
+
+async function displayNone() {
+    const readButton = document.getElementById("readbtn");
+    if (readButton) {
+        readButton.style.border = "2px solid black";
+    }
+}
 
 async function fetchArticleById(articleId) {
     try {
@@ -56,7 +71,7 @@ async function fetchArticleById(articleId) {
         }
     } catch (error) {
         console.error('Error:', error);
-    }
+}
 }
 
 // Call the function to fetch and log the article with ID 1
