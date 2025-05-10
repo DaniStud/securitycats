@@ -38,3 +38,26 @@ async function fetchArticles() {
         console.error('Error:', error);
     }
 }
+
+
+async function fetchArticleById(articleId) {
+    try {
+        // Fetch the article with the given ID
+        const response = await fetch(`${DBurl}/get_article/${articleId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            console.log('Article:', result.data); // Log the article to the console
+        } else {
+            console.error('Error fetching article:', result.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+// Call the function to fetch and log the article with ID 1
+fetchArticleById(2);

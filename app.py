@@ -59,6 +59,22 @@ def get_articles():
     
     
 
+@app.route('/get_article/<int:article_id>', methods=['GET'])
+def get_article(article_id):
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM articles WHERE article_id = %s", (article_id,))
+        article = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if article:
+            return jsonify({'status': 'success', 'data': article})
+        else:
+            return jsonify({'status': 'error', 'message': 'Article not found'}), 404
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
     
     
 if __name__ == '__main__':
