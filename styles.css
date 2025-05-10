@@ -6,10 +6,11 @@
 header{
     margin-bottom: 5em;
     background-color: burlywood;
-    min-height: 6vh;
+    min-height: 66px;
 
     a{
-        margin-top: 100px;
+        display: block;
+        padding-top: 1.2em;
         margin-left: 16%;
     }
 }
