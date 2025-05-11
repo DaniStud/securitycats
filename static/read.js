@@ -2,23 +2,6 @@ const DBurl = 'http://localhost:5000';
 const url = 'http://localhost:5500';
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    const articleId = getArticleIdFromUrl();
-    console.log('Article ID from URL:', articleId);  // Log to verify
-    if (articleId) {
-        fetchArticleById(articleId);
-        fetchCommentsForArticle(articleId);
-    } else {
-        console.error('No article ID found in the URL.');
-    }
-});
-
-// Function to extract the article ID from the URL path
-function getArticleIdFromUrl() {
-    const pathSegments = window.location.pathname.split('/');
-    return pathSegments[pathSegments.length - 1]; // Get the last segment of the path
-}
-
 // Function to fetch the article by ID and insert it into the page
 async function fetchArticleById(articleId) {
     try {
