@@ -14,7 +14,40 @@ db_config = {
 }
 
 
-# GET
+
+####################################
+#ROUTES
+###################################
+@app.route('/article/<int:article_id>')
+def render_article(article_id):
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM articles WHERE article_id = %s", (article_id,))
+        article = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if article:
+            return render_template('article.html', article=article)
+        else:
+            return "<h1>404 - Article not found</h1>", 404
+    except Exception as e:
+        return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
+    
+    
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/admin')
+def admin():
+    return render_template('admin.html')
+
+
+    ###########################################
+    # GET
+    ###########################################
 @app.route('/get_articles', methods=['GET'])
 def get_articles():
     try:
@@ -52,8 +85,24 @@ def get_article(article_id):
         return jsonify({'status': 'error', 'message': str(e)}), 500
     
     
+@app.route('/get_comments/<int:article_id>', methods=['GET'])
+def get_comments(article_id):
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM comments WHERE article_id = %s", (article_id,))
+    comments = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return jsonify({'status': 'success', 'data': comments})
+
     
-    #POST
+    
+    ###########################################
+    # POST
+    ###########################################
+    
+    
 @app.route('/submit_article', methods=['POST'])
 def submit():
     try:
@@ -81,34 +130,28 @@ def submit():
         # Handle any server-side errors
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/add_comment', methods=['POST'])
+def add_comment():
+    data = request.get_json()
+    article_id = data.get('article_id')
+    author = data.get('author', 'Anonymous')
+    content = data.get('content')
 
+    if not article_id or not content:
+        return jsonify({'status': 'error', 'message': 'Missing data'}), 400
 
-#ROUTES
-@app.route('/article/<int:article_id>')
-def render_article(article_id):
-    try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM articles WHERE article_id = %s", (article_id,))
-        article = cursor.fetchone()
-        cursor.close()
-        conn.close()
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO comments (article_id, author, content) VALUES (%s, %s, %s)",
+        (article_id, author, content)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-        if article:
-            return render_template('article.html', article=article)
-        else:
-            return "<h1>404 - Article not found</h1>", 404
-    except Exception as e:
-        return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
-    
-    
-@app.route('/')
-def index():
-    return render_template('index.html')
+    return jsonify({'status': 'success'})
 
-@app.route('/admin')
-def admin():
-    return render_template('admin.html')
     
 if __name__ == '__main__':
     app.run(debug=True)
