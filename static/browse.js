@@ -22,7 +22,7 @@ async function fetchArticles() {
                 <div class="articleWrapper"> 
                 <div class="articleTitle">Title: ${article.title}</div>
                 <div class="articleContent">Content: ${article.article}</div>
-                <a id="readbtn" href="${url}/article.html/${article.article_id}">Security Cats</a>
+                <a class="readbtn" href="/article/${article.article_id}">Security Cats</a>
                 </div>
                 `
 

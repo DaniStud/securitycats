@@ -13,34 +13,8 @@ db_config = {
     'database': 'securitycats'
 }
 
-@app.route('/submit_article', methods=['POST'])
-def submit():
-    try:
-        data = request.get_json()
-        atitle = data.get('atitle')
-        article = data.get('article')
 
-        # Ensure atitle is provided
-        if not atitle:
-            return jsonify({'status': 'error', 'message': 'Article title is required'}), 400
-        if not article:
-            return jsonify({'status': 'error', 'message': 'Article content is required'}), 400
-        
-
-        # Connect to the database and insert the article title
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO articles (title, article) VALUES (%s, %s)", (atitle, article))
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return jsonify({'status': 'success'})
-    except Exception as e:
-        # Handle any server-side errors
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-
+# GET
 @app.route('/get_articles', methods=['GET'])
 def get_articles():
     try:
@@ -77,6 +51,39 @@ def get_article(article_id):
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
     
+    
+    
+    #POST
+@app.route('/submit_article', methods=['POST'])
+def submit():
+    try:
+        data = request.get_json()
+        atitle = data.get('atitle')
+        article = data.get('article')
+
+        # Ensure atitle is provided
+        if not atitle:
+            return jsonify({'status': 'error', 'message': 'Article title is required'}), 400
+        if not article:
+            return jsonify({'status': 'error', 'message': 'Article content is required'}), 400
+        
+
+        # Connect to the database and insert the article title
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO articles (title, article) VALUES (%s, %s)", (atitle, article))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        # Handle any server-side errors
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+
+#ROUTES
 @app.route('/article/<int:article_id>')
 def render_article(article_id):
     try:
@@ -94,6 +101,10 @@ def render_article(article_id):
     except Exception as e:
         return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
     
+    
+@app.route('/')
+def index():
+    return render_template('index.html')
     
 if __name__ == '__main__':
     app.run(debug=True)
