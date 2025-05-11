@@ -23,4 +23,6 @@ header{
 body section{
     margin-left: 33%;
     margin-right: 33%;
+    border-bottom: 1px solid grey;
+    padding: 2em;
 }
