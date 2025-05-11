@@ -1,4 +1,6 @@
 const DBurl = 'http://localhost:5000';
+const url = 'http://localhost:5500';
+
 
 document.addEventListener('DOMContentLoaded', () => {
     const articleId = getArticleIdFromUrl();

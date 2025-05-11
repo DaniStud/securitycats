@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import mysql.connector
+from flask import render_template
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})  # Allow CORS for all routes
@@ -75,6 +76,23 @@ def get_article(article_id):
             return jsonify({'status': 'error', 'message': 'Article not found'}), 404
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+    
+@app.route('/article/<int:article_id>')
+def render_article(article_id):
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM articles WHERE article_id = %s", (article_id,))
+        article = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if article:
+            return render_template('article.html', article=article)
+        else:
+            return "<h1>404 - Article not found</h1>", 404
+    except Exception as e:
+        return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
     
     
 if __name__ == '__main__':
