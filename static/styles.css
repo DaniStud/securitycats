@@ -43,7 +43,7 @@ header{
 
 
 body section{
-    margin-left: 33%;
-    margin-right: 33%;
+    margin-left: 33vw;
+    margin-right: 33vw;
     border-bottom: 1px solid grey;
 }

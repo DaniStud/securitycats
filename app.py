@@ -130,27 +130,33 @@ def submit():
         # Handle any server-side errors
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/add_comment', methods=['POST'])
-def add_comment():
-    data = request.get_json()
-    article_id = data.get('article_id')
-    author = data.get('author', 'Anonymous')
-    content = data.get('content')
 
-    if not article_id or not content:
-        return jsonify({'status': 'error', 'message': 'Missing data'}), 400
+@app.route('/submit_comment', methods=['POST'])
+def submit_comment():
+    try:
+        data = request.get_json()
+        article_id = data.get('article_id')
+        comment = data.get('comment')
 
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO comments (article_id, author, content) VALUES (%s, %s, %s)",
-        (article_id, author, content)
-    )
-    conn.commit()
-    cursor.close()
-    conn.close()
+        # Ensure article_id and comment are provided
+        if not article_id:
+            return jsonify({'status': 'error', 'message': 'Article ID is required'}), 400
+        if not comment:
+            return jsonify({'status': 'error', 'message': 'Comment content is required'}), 400
 
-    return jsonify({'status': 'success'})
+        # Connect to the database and insert the comment
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO comments (article_id, content) VALUES (%s, %s)", (article_id, comment))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'status': 'success', 'message': 'Comment submitted successfully'})
+    except Exception as e:
+        # Handle any server-side errors
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
     
 if __name__ == '__main__':

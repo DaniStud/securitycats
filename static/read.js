@@ -87,31 +87,39 @@ function insertCommentsIntoPage(posted_comments) {
 
 
     /// comment form submit
-    document.getElementById('comment_form').addEventListener('submit', async (e) => {
-        e.preventDefault(); // Prevent default form submission
+document.getElementById('comment_form').addEventListener('submit', async (e) => {
+    e.preventDefault(); // Prevent default form submission
 
-        // Grab the form data (article title)
-        const article = document.getElementById('comment').value
-        if (!comment) {
-        alert('Comment empty!');
+    // Extract the article ID from the URL
+    const pathSegments = window.location.pathname.split('/');
+    const articleId = pathSegments[pathSegments.length - 1];
+
+    // Grab the comment content
+    const comment = document.getElementById('comment').value;
+
+    if (!comment) {
+        alert('Comment cannot be empty!');
         return;
     }
-        // Send a POST request to the Flask backend
-        const res = await fetch('http://localhost:5000/submit_article', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ atitle, article })
-        });
 
-        // Handle the server response (optional)
-        const result = await res.json();
-        console.log(result);
-
-        if (result.status === 'success') {
-            alert('Article submitted successfully!');
-        } else {
-            alert('There was an error submitting the article.');
-        }
+    // Send a POST request to the Flask backend
+    const res = await fetch(`${DBurl}/submit_comment`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ article_id: articleId, comment })
     });
+
+    // Handle the server response
+    const result = await res.json();
+    console.log(result);
+
+    if (result.status === 'success') {
+        alert('Comment submitted successfully!');
+        // Optionally, refresh the comments section
+        fetchArticleComments();
+    } else {
+        alert(`Error: ${result.message}`);
+    }
+});
