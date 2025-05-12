@@ -53,10 +53,19 @@ function insertArticleIntoPage(article) {
 //     }
 // }
 
-async function fetchArticleComments(articleId) {
+async function fetchArticleComments() {
     try {
+        // Extract the article ID from the URL
+        const pathSegments = window.location.pathname.split('/');
+        const articleId = pathSegments[pathSegments.length - 1];
+
+        if (!articleId) {
+            console.error('Article ID not found in URL');
+            return;
+        }
+
         // Make a GET request to the Flask endpoint
-        const response = await fetch(`/get_article/${articleId}`, {
+        const response = await fetch(`${DBurl}/get_article/${articleId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -70,8 +79,7 @@ async function fetchArticleComments(articleId) {
         if (data.status === 'success') {
             // Log the comments to the console
             console.log('Comments:', data.data.comments);
-                        insertCommentsIntoPage(data.data.comments);
-
+            insertCommentsIntoPage(data.data.comments);
         } else {
             console.error('Error:', data.message);
         }
@@ -80,8 +88,8 @@ async function fetchArticleComments(articleId) {
     }
 }
 
-// Example: Fetch comments for article with ID 1
-fetchArticleComments(1);
+// Execute the function to fetch comments based on the actual article ID
+fetchArticleComments();
 
 
 // Function to insert the article into the HTML
