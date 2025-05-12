@@ -3,6 +3,18 @@
     padding: 0;
 }
 
+
+form{
+margin-bottom: 10em;
+padding: 1em 0em 1em 0em;
+border-bottom: 1px solid grey;
+}
+
+.comment{
+    border: 1px solid grey;
+    padding: 1em;
+}
+
 header{
     margin-bottom: 5em;
     background-color: burlywood;
