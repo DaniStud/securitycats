@@ -88,10 +88,10 @@ fetchArticleComments(1);
 function insertCommentsIntoPage(posted_comments) {
     const section = document.getElementById("posted_comments");
     section.innerHTML = `
-        <div id="coments_wrapper">
+        <div id="comments_wrapper">
             ${posted_comments.map(comment => `
                 <div class="comment">
-                    <p>${comment}</p>
+                    <p>${comment.content}</p> 
                 </div>
             `).join('')}
         </div>
