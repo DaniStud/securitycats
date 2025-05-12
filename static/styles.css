@@ -13,6 +13,7 @@ border-bottom: 1px solid grey;
 .comment{
     border: 1px solid grey;
     padding: 1em;
+    margin: 2em;
 }
 
 header{
