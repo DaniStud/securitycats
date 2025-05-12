@@ -70,6 +70,8 @@ async function fetchArticleComments(articleId) {
         if (data.status === 'success') {
             // Log the comments to the console
             console.log('Comments:', data.data.comments);
+                        insertCommentsIntoPage(data.data.comments);
+
         } else {
             console.error('Error:', data.message);
         }
@@ -80,3 +82,18 @@ async function fetchArticleComments(articleId) {
 
 // Example: Fetch comments for article with ID 1
 fetchArticleComments(1);
+
+
+// Function to insert the article into the HTML
+function insertCommentsIntoPage(posted_comments) {
+    const section = document.getElementById("posted_comments");
+    section.innerHTML = `
+        <div id="coments_wrapper">
+            ${posted_comments.map(comment => `
+                <div class="comment">
+                    <p>${comment}</p>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
