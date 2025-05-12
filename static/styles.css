@@ -5,26 +5,29 @@
 
 
 #comment_form{
-margin-bottom: 10em;
+margin: 10em 0em 10em 0em;
 padding: 1em 0em 1em 0em;
 border-bottom: 1px solid grey;
 }
 
 .comment{
-    border: 1px solid grey;
+    border-bottom: 1px solid grey;
+    border-top: 1px solid grey;
     padding: 1em;
-    margin: 2em;
+    margin: 1em;
+    margin-bottom: 4em;
 }
 
 header{
     margin-bottom: 5em;
-    background-color: burlywood;
+    background-color: #231F20;
     min-height: 66px;
 
     a{
         display: block;
         padding-top: 1.2em;
         margin-left: 16%;
+        color: white;
     }
 }
 

@@ -33,26 +33,6 @@ function insertArticleIntoPage(article) {
 }
 
 
-// Function to fetch and log comments for the current article
-// async function fetchCommentsForArticle(articleId) {
-//     try {
-//         const response = await fetch(`${DBurl}/get_comments/${articleId}`);
-//         console.log("lorem");
-//         if (!response.ok) {
-//             throw new Error(`HTTP error! status: ${response.status}`);
-//         }
-
-//         const result = await response.json();
-//         if (result.status === 'success') {
-//             console.log(`Comments for article ${articleId}:`, result.data);
-//         } else {
-//             console.error('Error fetching comments:', result.message);
-//         }
-//     } catch (error) {
-//         console.error('Error fetching comments:', error);
-//     }
-// }
-
 async function fetchArticleComments() {
     try {
         // Extract the article ID from the URL
@@ -91,7 +71,6 @@ async function fetchArticleComments() {
 // Execute the function to fetch comments based on the actual article ID
 fetchArticleComments();
 
-
 // Function to insert the article into the HTML
 function insertCommentsIntoPage(posted_comments) {
     const section = document.getElementById("posted_comments");
@@ -105,3 +84,34 @@ function insertCommentsIntoPage(posted_comments) {
         </div>
     `;
 }
+
+
+    /// comment form submit
+    document.getElementById('comment_form').addEventListener('submit', async (e) => {
+        e.preventDefault(); // Prevent default form submission
+
+        // Grab the form data (article title)
+        const article = document.getElementById('comment').value
+        if (!comment) {
+        alert('Comment empty!');
+        return;
+    }
+        // Send a POST request to the Flask backend
+        const res = await fetch('http://localhost:5000/submit_article', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ atitle, article })
+        });
+
+        // Handle the server response (optional)
+        const result = await res.json();
+        console.log(result);
+
+        if (result.status === 'success') {
+            alert('Article submitted successfully!');
+        } else {
+            alert('There was an error submitting the article.');
+        }
+    });
