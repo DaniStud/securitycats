@@ -4,7 +4,7 @@
 }
 
 
-form{
+#comment_form{
 margin-bottom: 10em;
 padding: 1em 0em 1em 0em;
 border-bottom: 1px solid grey;
@@ -41,5 +41,4 @@ body section{
     margin-left: 33%;
     margin-right: 33%;
     border-bottom: 1px solid grey;
-    padding: 2em;
 }
