@@ -20,62 +20,9 @@ db_config = {
 }
 
 
-
-@app.route('/login', methods=['POST'])
-def login():
-    try:
-        data = request.get_json()
-        name = data.get('name')
-        password = data.get('password')
-
-        if not name or not password:
-            return jsonify({'status': 'error', 'message': 'Missing name or password'}), 400
-
-        # Connect to DB and get user by name
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM users WHERE name = %s", (name,))
-        user = cursor.fetchone()
-        cursor.close()
-        conn.close()
-
-        if user and bcrypt.check_password_hash(user['password'], password):
-            session['user_id'] = user['id']
-            session['name'] = user['name']
-            return jsonify({'status': 'success', 'message': 'Login successful'})
-        else:
-            return jsonify({'status': 'error', 'message': 'Invalid username or password'}), 401
-
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-
-@app.route('/login_page')
-def login_page():
-    return render_template('login.html')
-
-
 ####################################
 #ROUTES
-###################################
-@app.route('/article/<int:article_id>')
-def render_article(article_id):
-    try:
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM articles WHERE article_id = %s", (article_id,))
-        article = cursor.fetchone()
-        cursor.close()
-        conn.close()
-
-        if article:
-            return render_template('article.html', article=article)
-        else:
-            return "<h1>404 - Article not found</h1>", 404
-    except Exception as e:
-        return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
-    
-    
+###################################    
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -93,6 +40,28 @@ def logout():
     return "<h1>Logged out</h1><p><a href='/login_page'>Go back to login</a></p>"
 
 
+@app.route('/login_page')
+def login_page():
+    return render_template('login.html')
+
+
+@app.route('/article/<int:article_id>')
+def render_article(article_id):
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM articles WHERE article_id = %s", (article_id,))
+        article = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if article:
+            return render_template('article.html', article=article)
+        else:
+            return "<h1>404 - Article not found</h1>", 404
+    except Exception as e:
+        return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
+    
 
     ###########################################
     # GET
@@ -206,6 +175,34 @@ def submit_comment():
         # Handle any server-side errors
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+
+@app.route('/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        password = data.get('password')
+
+        if not name or not password:
+            return jsonify({'status': 'error', 'message': 'Missing name or password'}), 400
+
+        # Connect to DB and get user by name
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE name = %s", (name,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if user and bcrypt.check_password_hash(user['password'], password):
+            session['user_id'] = user['id']
+            session['name'] = user['name']
+            return jsonify({'status': 'success', 'message': 'Login successful'})
+        else:
+            return jsonify({'status': 'error', 'message': 'Invalid username or password'}), 401
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
     
 if __name__ == '__main__':
