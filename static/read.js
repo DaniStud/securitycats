@@ -1,11 +1,10 @@
-const DBurl = 'http://localhost:5000';
-const url = 'http://localhost:5500';
+// Removed: const url = 'http://localhost:5500';
 
 
 // Function to fetch the article by ID and insert it into the page
 async function fetchArticleById(articleId) {
     try {
-        const response = await fetch(`${DBurl}/get_article/${articleId}`);
+        const response = await fetch(`/get_article/${articleId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -32,10 +31,8 @@ function insertArticleIntoPage(article) {
     `;
 }
 
-
 async function fetchArticleComments() {
     try {
-        // Extract the article ID from the URL
         const pathSegments = window.location.pathname.split('/');
         const articleId = pathSegments[pathSegments.length - 1];
 
@@ -44,20 +41,16 @@ async function fetchArticleComments() {
             return;
         }
 
-        // Make a GET request to the Flask endpoint
-        const response = await fetch(`${DBurl}/get_article/${articleId}`, {
+        const response = await fetch(`/get_article/${articleId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
             }
         });
 
-        // Parse the JSON response
         const data = await response.json();
 
-        // Check if the request was successful
         if (data.status === 'success') {
-            // Log the comments to the console
             console.log('Comments:', data.data.comments);
             insertCommentsIntoPage(data.data.comments);
         } else {
@@ -68,10 +61,8 @@ async function fetchArticleComments() {
     }
 }
 
-// Execute the function to fetch comments based on the actual article ID
 fetchArticleComments();
 
-// Function to insert the article into the HTML
 function insertCommentsIntoPage(posted_comments) {
     const section = document.getElementById("posted_comments");
     section.innerHTML = `
@@ -85,16 +76,11 @@ function insertCommentsIntoPage(posted_comments) {
     `;
 }
 
-
-    /// comment form submit
 document.getElementById('comment_form').addEventListener('submit', async (e) => {
-    e.preventDefault(); // Prevent default form submission
+    e.preventDefault();
 
-    // Extract the article ID from the URL
     const pathSegments = window.location.pathname.split('/');
     const articleId = pathSegments[pathSegments.length - 1];
-
-    // Grab the comment content
     const comment = document.getElementById('comment').value;
 
     if (!comment) {
@@ -102,22 +88,17 @@ document.getElementById('comment_form').addEventListener('submit', async (e) => 
         return;
     }
 
-    // Send a POST request to the Flask backend
-    const res = await fetch(`${DBurl}/submit_comment`, {
+    const res = await fetch(`/submit_comment`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ article_id: articleId, comment })
     });
 
-    // Handle the server response
     const result = await res.json();
     console.log(result);
 
     if (result.status === 'success') {
         alert('Comment submitted successfully!');
-        // Optionally, refresh the comments section
         fetchArticleComments();
     } else {
         alert(`Error: ${result.message}`);

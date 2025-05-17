@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, url_for
 from flask_cors import CORS
 import mysql.connector
 from flask import render_template
@@ -28,7 +28,7 @@ def index():
 @app.route('/admin')
 def admin():
     if 'user_id' not in session:
-        return "<h1>403 - Unauthorized</h1><p>Please log in first.</p>", 403
+        return redirect(url_for('login_page'))
     return render_template('admin.html')
 
 
