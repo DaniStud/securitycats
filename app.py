@@ -2,9 +2,15 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import mysql.connector
 from flask import render_template
+from flask_bcrypt import Bcrypt
+bcrypt = Bcrypt()
+from flask import session
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})  # Allow CORS for all routes
+
+app.secret_key = 'your-super-secret-key'  # Required for session encryption
+
 
 db_config = {
     'host': 'localhost',
@@ -13,6 +19,40 @@ db_config = {
     'database': 'securitycats'
 }
 
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        password = data.get('password')
+
+        if not name or not password:
+            return jsonify({'status': 'error', 'message': 'Missing name or password'}), 400
+
+        # Connect to DB and get user by name
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE name = %s", (name,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if user and bcrypt.check_password_hash(user['password'], password):
+            session['user_id'] = user['id']
+            session['name'] = user['name']
+            return jsonify({'status': 'success', 'message': 'Login successful'})
+        else:
+            return jsonify({'status': 'error', 'message': 'Invalid username or password'}), 401
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/login_page')
+def login_page():
+    return render_template('login.html')
 
 
 ####################################
@@ -42,7 +82,16 @@ def index():
 
 @app.route('/admin')
 def admin():
+    if 'user_id' not in session:
+        return "<h1>403 - Unauthorized</h1><p>Please log in first.</p>", 403
     return render_template('admin.html')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return "<h1>Logged out</h1><p><a href='/login_page'>Go back to login</a></p>"
+
 
 
     ###########################################
