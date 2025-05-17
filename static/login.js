@@ -10,13 +10,11 @@ document.getElementById('login_form').addEventListener('submit', async (e) => {
     }
 
     try {
-        const res = await fetch('http://localhost:5000/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ name, password })
-        });
+const res = await fetch('/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name, password })
+});
 
         const result = await res.json();
         console.log(result);

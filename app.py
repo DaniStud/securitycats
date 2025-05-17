@@ -7,8 +7,6 @@ bcrypt = Bcrypt()
 from flask import session
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Allow CORS for all routes
-
 app.secret_key = 'your-super-secret-key'  # Required for session encryption
 
 
