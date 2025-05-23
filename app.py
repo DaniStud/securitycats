@@ -5,6 +5,7 @@ from flask import render_template
 from flask_bcrypt import Bcrypt
 bcrypt = Bcrypt()
 from flask import session
+import re
 
 app = Flask(__name__)
 app.secret_key = 'your-super-secret-key'  # Required for session encryption
@@ -159,11 +160,32 @@ def submit_comment():
             return jsonify({'status': 'error', 'message': 'Article ID is required'}), 400
         if not comment:
             return jsonify({'status': 'error', 'message': 'Comment content is required'}), 400
+        
+        #clean the input before sending to db
+        def sanitize_comment(comment):
+            # use regex to strip html tags 
+            comment = re.sub
+            # remove dangerous attributes and script content 
+            comment = re.sub(r'\bon\w+\s*=\s*["\'][^"\']*["\']', '', comment, flags=re.IGNORECASE)
+            # Limit comment length (e.g., 1000 characters)
+            comment = comment[:1000]
+            # Escape special characters to prevent injection in display
+            html_escape_table = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#x27;'
+            }
+            return ''.join(html_escape_table.get(c, c) for c in comment)
+
+        sanitized_comment = sanitize_comment(comment)
+        
 
         # Connect to the database and insert the comment
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO comments (article_id, content) VALUES (%s, %s)", (article_id, comment))
+        cursor.execute("INSERT INTO comments (article_id, content) VALUES (%s, %s)", (article_id, sanitized_comment))
         conn.commit()
         cursor.close()
         conn.close()
