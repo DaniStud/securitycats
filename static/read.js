@@ -23,12 +23,18 @@ async function fetchArticleById(articleId) {
 // Function to insert the article into the HTML
 function insertArticleIntoPage(article) {
     const section = document.querySelector('section');
-    section.innerHTML = `
-        <div class="articleWrapper">
-            <h1 class="articleTitle">${article.title}</h1>
-            <p class="articleContent">${article.article}</p>
-        </div>
-    `;
+    section.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'articleWrapper';
+    const title = document.createElement('h1');
+    title.className = 'articleTitle';
+    title.textContent = article.title;
+    const content = document.createElement('p');
+    content.className = 'articleContent';
+    content.textContent = article.article;
+    wrapper.appendChild(title);
+    wrapper.appendChild(content);
+    section.appendChild(wrapper);
 }
 
 async function fetchArticleComments() {
@@ -64,16 +70,19 @@ async function fetchArticleComments() {
 fetchArticleComments();
 
 function insertCommentsIntoPage(posted_comments) {
-    const section = document.getElementById("posted_comments");
-    section.innerHTML = `
-        <div id="comments_wrapper">
-            ${posted_comments.map(comment => `
-                <div class="comment">
-                    <p>${comment.content}</p> 
-                </div>
-            `).join('')}
-        </div>
-    `;
+    const section = document.getElementById('posted_comments');
+    section.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.id = 'comments_wrapper';
+    posted_comments.forEach(comment => {
+        const commentDiv = document.createElement('div');
+        commentDiv.className = 'comment';
+        const p = document.createElement('p');
+        p.textContent = comment.content;
+        commentDiv.appendChild(p);
+        wrapper.appendChild(commentDiv);
+    });
+    section.appendChild(wrapper);
 }
 
 document.getElementById('comment_form').addEventListener('submit', async (e) => {
