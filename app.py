@@ -6,6 +6,8 @@ from flask_bcrypt import Bcrypt
 bcrypt = Bcrypt()
 from flask import session
 import re
+import os 
+import secrets
 
 app = Flask(__name__)
 app.secret_key = 'your-super-secret-key'  # Required for session encryption
@@ -41,7 +43,10 @@ def logout():
 
 @app.route('/login_page')
 def login_page():
-    return render_template('login.html')
+    # generate token, store in session
+    csrf_token = secrets.token_hex(32) #generate secure random token
+    session['csrf_token'] = csrf_token
+    return render_template('login.html', csrf_token=csrf_token)
 
 
 @app.route('/article/<int:article_id>')
@@ -197,6 +202,11 @@ def submit_comment():
 def login():
     try:
         data = request.get_json()
+        #validate csrf token
+        client_csrf_token = data.get('csrf_token')
+        if not client_csrf_token or client_csrf_token != session.get('csrf_token'):
+            return jsonify({'status': 'error', 'message': 'invalid CSRF token'}), 403
+        
         name = data.get('name')
         password = data.get('password')
 
@@ -214,6 +224,8 @@ def login():
         if user and bcrypt.check_password_hash(user['password'], password):
             session['user_id'] = user['id']
             session['name'] = user['name']
+            #clear csrf token to prevent re-use
+            session.pop('csrf_token', None)
             return jsonify({'status': 'success', 'message': 'Login successful'})
         else:
             return jsonify({'status': 'error', 'message': 'Invalid username or password'}), 401

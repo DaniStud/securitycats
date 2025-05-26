@@ -28,7 +28,8 @@
                     <div>
                         <label for="article">Write your blog post here</label>
                     </div>
-                    <input type="text" id="article" name="article">
+                    <input type="text" id="article" name="article" required>
+                    <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token }}">
                 </div>
                 <input type="submit" value="Submit">    
             </form> 

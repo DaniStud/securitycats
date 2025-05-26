@@ -23,7 +23,6 @@ async function fetchArticleById(articleId) {
 // Function to insert the article into the HTML
 function insertArticleIntoPage(article) {
     const section = document.querySelector('section');
-    section.innerHTML = '';
     const wrapper = document.createElement('div');
     wrapper.className = 'articleWrapper';
     const title = document.createElement('h1');
@@ -71,7 +70,6 @@ fetchArticleComments();
 
 function insertCommentsIntoPage(posted_comments) {
     const section = document.getElementById('posted_comments');
-    section.innerHTML = '';
     const wrapper = document.createElement('div');
     wrapper.id = 'comments_wrapper';
     posted_comments.forEach(comment => {
