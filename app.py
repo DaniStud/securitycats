@@ -32,8 +32,11 @@ def index():
 def admin():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
-    return render_template('admin.html')
+    
+    csrf_token = secrets.token_hex(32)
+    session['csrf_token'] = csrf_token
 
+    return render_template('admin.html', csrf_token=csrf_token)
 
 @app.route('/logout')
 def logout():
@@ -129,6 +132,12 @@ def get_article_with_comments(article_id):
 def submit():
     try:
         data = request.get_json()
+        
+        # Validate CSRF token
+        client_csrf_token = data.get('csrf_token')
+        if not client_csrf_token or client_csrf_token != session.get('csrf_token'):
+            return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
+        
         atitle = data.get('atitle')
         article = data.get('article')
 
@@ -138,7 +147,6 @@ def submit():
         if not article:
             return jsonify({'status': 'error', 'message': 'Article content is required'}), 400
         
-
         # Connect to the database and insert the article title
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
@@ -147,11 +155,13 @@ def submit():
         cursor.close()
         conn.close()
 
+        # Clear CSRF token to prevent reuse
+        session.pop('csrf_token', None)
+        
         return jsonify({'status': 'success'})
     except Exception as e:
         # Handle any server-side errors
         return jsonify({'status': 'error', 'message': str(e)}), 500
-
 
 @app.route('/submit_comment', methods=['POST'])
 def submit_comment():
