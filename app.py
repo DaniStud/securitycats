@@ -267,7 +267,7 @@ def login():
         session.pop('csrf_token_expiry', None)
         name = data.get('name')
         password = data.get('password')
-        # Validate username: max 50 chars, allowed charset
+        # Validate username: max 50 chars, allowed charset (alphanumeric, _, ., -)
         if not name or not password:
             return jsonify({'status': 'error', 'message': 'Missing name or password'}), 400
         if len(name) > 50:
@@ -289,7 +289,9 @@ def login():
         else:
             return jsonify({'status': 'error', 'message': 'Invalid username or password'}), 401
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        # Escape error message to prevent XSS in frontend
+        safe_message = re.sub(r'[^a-zA-Z0-9 .,!?@#\-_"]', '', str(e))[:200]
+        return jsonify({'status': 'error', 'message': safe_message}), 500
 
     
 if __name__ == '__main__':
