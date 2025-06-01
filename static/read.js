@@ -89,6 +89,7 @@ document.getElementById('comment_form').addEventListener('submit', async (e) => 
     const pathSegments = window.location.pathname.split('/');
     const articleId = pathSegments[pathSegments.length - 1];
     const comment = document.getElementById('comment').value;
+    const csrfToken = document.getElementById('csrf_token').value;
 
     if (!comment) {
         alert('Comment cannot be empty!');
@@ -98,7 +99,7 @@ document.getElementById('comment_form').addEventListener('submit', async (e) => 
     const res = await fetch(`/submit_comment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ article_id: articleId, comment })
+        body: JSON.stringify({ article_id: articleId, comment, csrf_token: csrfToken })
     });
 
     const result = await res.json();

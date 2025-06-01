@@ -67,7 +67,11 @@ def render_article(article_id):
         conn.close()
 
         if article:
-            return render_template('article.html', article=article)
+            # Generate CSRF token and set expiry
+            csrf_token = secrets.token_hex(32)
+            session['csrf_token'] = csrf_token
+            session['csrf_token_expiry'] = (datetime.utcnow() + timedelta(minutes=30)).timestamp()
+            return render_template('article.html', article=article, csrf_token=csrf_token)
         else:
             return "<h1>404 - Article not found</h1>", 404
     except Exception as e:
@@ -187,6 +191,20 @@ def submit_comment():
         data = request.get_json()
         article_id = data.get('article_id')
         comment = data.get('comment')
+        client_csrf_token = data.get('csrf_token')
+
+        # CSRF token validation
+        server_csrf_token = session.get('csrf_token')
+        csrf_expiry = session.get('csrf_token_expiry')
+        if not client_csrf_token or not server_csrf_token or client_csrf_token != server_csrf_token:
+            return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
+        if not csrf_expiry or datetime.utcnow().timestamp() > csrf_expiry:
+            session.pop('csrf_token', None)
+            session.pop('csrf_token_expiry', None)
+            return jsonify({'status': 'error', 'message': 'CSRF token expired'}), 403
+        # Invalidate token after use
+        session.pop('csrf_token', None)
+        session.pop('csrf_token_expiry', None)
 
         # Ensure article_id and comment are provided
         if not article_id:
@@ -200,26 +218,22 @@ def submit_comment():
             return jsonify({'status': 'error', 'message': 'Article ID must be a positive integer'}), 400
         if not comment:
             return jsonify({'status': 'error', 'message': 'Comment content is required'}), 400
-
-        # Custom sanitization function
+        # Validate comment content: must be 1-1000 chars, only allowed signs
+        allowed = re.compile(r"^[a-zA-Z0-9 .,!?@#\-_'\"\(\)\[\]:;\n]{1,1000}$", re.UNICODE)
+        if not allowed.match(comment):
+            return jsonify({'status': 'error', 'message': 'Comment contains invalid characters or is too long (max 1000)'}), 400
         def sanitize_comment(comment):
-            # Allow only whitelisted characters: letters, numbers, basic punctuation, and a few safe symbols
             allowed = re.compile(r"[^a-zA-Z0-9 .,!?@#\-_'\"\(\)\[\]:;\n]", re.UNICODE)
             comment = allowed.sub('', comment)
-            # Limit comment length (e.g., 1000 characters)
             comment = comment[:1000]
             return comment
-
         sanitized_comment = sanitize_comment(comment)
-
-        # Connect to the database and insert the sanitized comment
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
         cursor.execute("INSERT INTO comments (article_id, content) VALUES (%s, %s)", (article_id_int, sanitized_comment))
         conn.commit()
         cursor.close()
         conn.close()
-
         return jsonify({'status': 'success', 'message': 'Comment submitted successfully'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
