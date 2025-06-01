@@ -36,10 +36,9 @@ def index():
 def admin():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
-    
     csrf_token = secrets.token_hex(32)
     session['csrf_token'] = csrf_token
-
+    session['csrf_token_expiry'] = (datetime.utcnow() + timedelta(minutes=30)).timestamp()
     return render_template('admin.html', csrf_token=csrf_token)
 
 @app.route('/logout')
@@ -140,10 +139,20 @@ def get_article_with_comments(article_id):
 def submit():
     try:
         data = request.get_json()
-        # Validate CSRF token
+        # Validate CSRF token and expiry
         client_csrf_token = data.get('csrf_token')
-        if not client_csrf_token or client_csrf_token != session.get('csrf_token'):
+        server_csrf_token = session.get('csrf_token')
+        csrf_expiry = session.get('csrf_token_expiry')
+        if not client_csrf_token or not server_csrf_token or client_csrf_token != server_csrf_token:
             return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
+        if not csrf_expiry or datetime.utcnow().timestamp() > csrf_expiry:
+            session.pop('csrf_token', None)
+            session.pop('csrf_token_expiry', None)
+            return jsonify({'status': 'error', 'message': 'CSRF token expired'}), 403
+        # Invalidate token after use
+        session.pop('csrf_token', None)
+        session.pop('csrf_token_expiry', None)
+
         atitle = data.get('atitle')
         article = data.get('article')
         # Sanitize article title and content (same as sanitize_comment)
@@ -166,8 +175,6 @@ def submit():
         conn.commit()
         cursor.close()
         conn.close()
-        # Clear CSRF token to prevent reuse
-        session.pop('csrf_token', None)
         return jsonify({'status': 'success'})
     except Exception as e:
         # Handle any server-side errors
