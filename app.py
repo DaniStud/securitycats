@@ -52,6 +52,7 @@ def login_page():
     # generate token, store in session
     csrf_token = secrets.token_hex(32) #generate secure random token
     session['csrf_token'] = csrf_token
+    session['csrf_token_expiry'] = (datetime.utcnow() + timedelta(minutes=30)).timestamp()
     return render_template('login.html', csrf_token=csrf_token)
 
 
@@ -251,34 +252,42 @@ def submit_comment():
 def login():
     try:
         data = request.get_json()
-        #validate csrf token
+        # Validate CSRF token and expiry
         client_csrf_token = data.get('csrf_token')
-        if not client_csrf_token or client_csrf_token != session.get('csrf_token'):
+        server_csrf_token = session.get('csrf_token')
+        csrf_expiry = session.get('csrf_token_expiry')
+        if not client_csrf_token or not server_csrf_token or client_csrf_token != server_csrf_token:
             return jsonify({'status': 'error', 'message': 'invalid CSRF token'}), 403
-        
+        if not csrf_expiry or datetime.utcnow().timestamp() > csrf_expiry:
+            session.pop('csrf_token', None)
+            session.pop('csrf_token_expiry', None)
+            return jsonify({'status': 'error', 'message': 'CSRF token expired'}), 403
+        # Invalidate token after use
+        session.pop('csrf_token', None)
+        session.pop('csrf_token_expiry', None)
         name = data.get('name')
         password = data.get('password')
-
+        # Validate username: max 50 chars, allowed charset
         if not name or not password:
             return jsonify({'status': 'error', 'message': 'Missing name or password'}), 400
-
-        # Connect to DB and get user by name
+        if len(name) > 50:
+            return jsonify({'status': 'error', 'message': 'Username too long (max 50 characters)'}), 400
+        if not re.match(r'^[a-zA-Z0-9_.-]+$', name):
+            return jsonify({'status': 'error', 'message': 'Username contains invalid characters'}), 400
+        # Use parameterized query for DB access
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM users WHERE name = %s", (name,))
         user = cursor.fetchone()
         cursor.close()
         conn.close()
-
         if user and bcrypt.check_password_hash(user['password'], password):
             session['user_id'] = user['id']
             session['name'] = user['name']
             #clear csrf token to prevent re-use
-            session.pop('csrf_token', None)
             return jsonify({'status': 'success', 'message': 'Login successful'})
         else:
             return jsonify({'status': 'error', 'message': 'Invalid username or password'}), 401
-
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
