@@ -21,14 +21,14 @@
                 <div>
                     <label for="atitle">Article Title</label>
                     <div>
-                        <input type="text" id="atitle" name="atitle">
+                        <input type="text" id="atitle" name="atitle" value="{{ atitle|e if atitle is defined else '' }}">
                     </div>
                 </div>
                         <div>
                     <div>
                         <label for="article">Write your blog post here</label>
                     </div>
-                    <input type="text" id="article" name="article" required>
+                    <input type="text" id="article" name="article" required value="{{ article|e if article is defined else '' }}">
                     <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token }}">
                 </div>
                 <input type="submit" value="Submit">    
