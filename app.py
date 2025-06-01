@@ -203,21 +203,12 @@ def submit_comment():
 
         # Custom sanitization function
         def sanitize_comment(comment):
-            # Strip HTML tags using regex (allow only plain text)
-            comment = re.sub(r'<[^>]+>', '', comment)
-            # Remove dangerous attributes and script content
-            comment = re.sub(r'\bon\w+\s*=\s*["\"][^"\"]*["\"]', '', comment, flags=re.IGNORECASE)
+            # Allow only whitelisted characters: letters, numbers, basic punctuation, and a few safe symbols
+            allowed = re.compile(r"[^a-zA-Z0-9 .,!?@#\-_'\"\(\)\[\]:;\n]", re.UNICODE)
+            comment = allowed.sub('', comment)
             # Limit comment length (e.g., 1000 characters)
             comment = comment[:1000]
-            # Escape special characters to prevent injection in display
-            html_escape_table = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#x27;'
-            }
-            return ''.join(html_escape_table.get(c, c) for c in comment)
+            return comment
 
         sanitized_comment = sanitize_comment(comment)
 
