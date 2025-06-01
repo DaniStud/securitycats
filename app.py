@@ -8,6 +8,7 @@ from flask import session
 import re
 import os 
 import secrets
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.secret_key = 'your-super-secret-key'  # Required for session encryption
@@ -20,6 +21,9 @@ db_config = {
     'database': 'securitycats'
 }
 
+
+# In-memory rate limit store: {ip: [datetime, ...]}
+comment_rate_limit = {}
 
 ####################################
 #ROUTES
@@ -166,6 +170,20 @@ def submit():
 @app.route('/submit_comment', methods=['POST'])
 def submit_comment():
     try:
+        ip = request.remote_addr
+        now = datetime.utcnow()
+        # Clean up old entries
+        window_start = now - timedelta(hours=1)
+        if ip in comment_rate_limit:
+            # Remove timestamps older than 1 hour
+            comment_rate_limit[ip] = [t for t in comment_rate_limit[ip] if t > window_start]
+        else:
+            comment_rate_limit[ip] = []
+        if len(comment_rate_limit[ip]) >= 20:
+            return jsonify({'status': 'error', 'message': 'Rate limit exceeded: max 20 comments per hour per IP'}), 429
+        # Add this comment's timestamp
+        comment_rate_limit[ip].append(now)
+        
         data = request.get_json()
         article_id = data.get('article_id')
         comment = data.get('comment')
@@ -181,7 +199,7 @@ def submit_comment():
             # Strip HTML tags using regex (allow only plain text)
             comment = re.sub(r'<[^>]+>', '', comment)
             # Remove dangerous attributes and script content
-            comment = re.sub(r'\bon\w+\s*=\s*["\'][^"\']*["\']', '', comment, flags=re.IGNORECASE)
+            comment = re.sub(r'\bon\w+\s*=\s*["\"][^"\"]*["\"]', '', comment, flags=re.IGNORECASE)
             # Limit comment length (e.g., 1000 characters)
             comment = comment[:1000]
             # Escape special characters to prevent injection in display
