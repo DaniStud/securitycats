@@ -24,6 +24,7 @@ db_config = {
 
 # In-memory rate limit store: {ip: [datetime, ...]}
 comment_rate_limit = {}
+login_rate_limit = {}
 
 ####################################
 #ROUTES
@@ -138,6 +139,8 @@ def get_article_with_comments(article_id):
     
 @app.route('/submit_article', methods=['POST'])
 def submit():
+    if 'user_id' not in session:
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
     try:
         data = request.get_json()
         # Validate CSRF token and expiry
@@ -251,8 +254,20 @@ def submit_comment():
 @app.route('/login', methods=['POST'])
 def login():
     try:
-        data = request.get_json()
+        # Rate limiting: max 5 login attempts per minute per IP
+        ip = request.remote_addr
+        now = datetime.utcnow()
+        window_start = now - timedelta(minutes=1)
+        if ip in login_rate_limit:
+            login_rate_limit[ip] = [t for t in login_rate_limit[ip] if t > window_start]
+        else:
+            login_rate_limit[ip] = []
+        if len(login_rate_limit[ip]) >= 5:
+            return jsonify({'status': 'error', 'message': 'Too many login attempts. Please wait and try again.'}), 429
+        login_rate_limit[ip].append(now)
+
         # Validate CSRF token and expiry
+        data = request.get_json()
         client_csrf_token = data.get('csrf_token')
         server_csrf_token = session.get('csrf_token')
         csrf_expiry = session.get('csrf_token_expiry')
@@ -274,6 +289,17 @@ def login():
             return jsonify({'status': 'error', 'message': 'Username too long (max 50 characters)'}), 400
         if not re.match(r'^[a-zA-Z0-9_.-]+$', name):
             return jsonify({'status': 'error', 'message': 'Username contains invalid characters'}), 400
+        # Enforce strong password: min 12 chars, must include upper, lower, digit, special
+        if len(password) < 12:
+            return jsonify({'status': 'error', 'message': 'Password must be at least 12 characters long'}), 400
+        if not re.search(r'[A-Z]', password):
+            return jsonify({'status': 'error', 'message': 'Password must include at least one uppercase letter'}), 400
+        if not re.search(r'[a-z]', password):
+            return jsonify({'status': 'error', 'message': 'Password must include at least one lowercase letter'}), 400
+        if not re.search(r'[0-9]', password):
+            return jsonify({'status': 'error', 'message': 'Password must include at least one digit'}), 400
+        if not re.search(r'[^a-zA-Z0-9]', password):
+            return jsonify({'status': 'error', 'message': 'Password must include at least one special character'}), 400
         # Use parameterized query for DB access
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
