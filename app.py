@@ -191,6 +191,13 @@ def submit_comment():
         # Ensure article_id and comment are provided
         if not article_id:
             return jsonify({'status': 'error', 'message': 'Article ID is required'}), 400
+        # Validate article_id is a positive integer
+        try:
+            article_id_int = int(article_id)
+            if article_id_int <= 0:
+                return jsonify({'status': 'error', 'message': 'Article ID must be a positive integer'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'status': 'error', 'message': 'Article ID must be a positive integer'}), 400
         if not comment:
             return jsonify({'status': 'error', 'message': 'Comment content is required'}), 400
 
@@ -217,7 +224,7 @@ def submit_comment():
         # Connect to the database and insert the sanitized comment
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO comments (article_id, content) VALUES (%s, %s)", (article_id, sanitized_comment))
+        cursor.execute("INSERT INTO comments (article_id, content) VALUES (%s, %s)", (article_id_int, sanitized_comment))
         conn.commit()
         cursor.close()
         conn.close()
