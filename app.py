@@ -140,21 +140,12 @@ def get_article_with_comments(article_id):
 def submit():
     try:
         data = request.get_json()
-        
         # Validate CSRF token
         client_csrf_token = data.get('csrf_token')
         if not client_csrf_token or client_csrf_token != session.get('csrf_token'):
             return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
-        
         atitle = data.get('atitle')
         article = data.get('article')
-
-        # Ensure atitle is provided
-        if not atitle:
-            return jsonify({'status': 'error', 'message': 'Article title is required'}), 400
-        if not article:
-            return jsonify({'status': 'error', 'message': 'Article content is required'}), 400
-        
         # Sanitize article title and content (same as sanitize_comment)
         def sanitize_article(text):
             allowed = re.compile(r"[^a-zA-Z0-9 .,!?@#\-_'\"\(\)\[\]:;\n]", re.UNICODE)
@@ -163,18 +154,20 @@ def submit():
             return text
         sanitized_title = sanitize_article(atitle) if atitle else ''
         sanitized_article = sanitize_article(article) if article else ''
-        
-        # Connect to the database and insert the article title
+        # Validate input for empty or invalid values after sanitization
+        if not sanitized_title:
+            return jsonify({'status': 'error', 'message': 'Article title is required and must contain valid characters'}), 400
+        if not sanitized_article:
+            return jsonify({'status': 'error', 'message': 'Article content is required and must contain valid characters'}), 400
+        # Use parameterized queries for database insert
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
         cursor.execute("INSERT INTO articles (title, article) VALUES (%s, %s)", (sanitized_title, sanitized_article))
         conn.commit()
         cursor.close()
         conn.close()
-
         # Clear CSRF token to prevent reuse
         session.pop('csrf_token', None)
-        
         return jsonify({'status': 'success'})
     except Exception as e:
         # Handle any server-side errors
