@@ -6,22 +6,34 @@ document.getElementById('login_form').addEventListener('submit', async (e) => {
     const csrf_token = document.getElementById('csrf_token').value;
     const errorDiv = document.getElementById('login_error');
 
-    // Client-side username validation
-    if (!/^[a-zA-Z0-9_.-]+$/.test(name)) {
-        if (errorDiv) errorDiv.textContent = 'Username contains invalid characters';
-        return;
-    }
-
+    // Client-side validation
     if (!name || !password) {
-        alert('Both fields are required!');
+        if (errorDiv) {
+            errorDiv.textContent = 'Both username and password are required!';
+        } else {
+            alert('Both username and password are required!');
+        }
         return;
     }
 
-    if (!csrf_token){
-        alert('CSRF token is missing, please reload page');
+    if (!csrf_token) {
+        if (errorDiv) {
+            errorDiv.textContent = 'CSRF token is missing. Reloading page...';
+        } else {
+            alert('CSRF token is missing. Reloading page...');
+        }
+        setTimeout(() => window.location.reload(), 2000);
         return;
     }
-    
+
+    if (!/^[a-zA-Z0-9_.-]+$/.test(name)) {
+        if (errorDiv) {
+            errorDiv.textContent = 'Username contains invalid characters';
+        } else {
+            alert('Username contains invalid characters');
+        }
+        return;
+    }
 
     try {
         const res = await fetch('/login', {
@@ -31,18 +43,32 @@ document.getElementById('login_form').addEventListener('submit', async (e) => {
         });
 
         const result = await res.json();
-        console.log(result);
 
         if (result.status === 'success') {
             alert('Login successful!');
             window.location.href = '/admin';
-        } else if (result.message === 'Invalid CSRF token') {
-            alert('Invalid CSRF token. Please reload the page and try again.');
+        } else if (res.status === 403) {
+            // Handle CSRF token issues
+            if (errorDiv) {
+                errorDiv.textContent = result.message + ' Reloading page...';
+            } else {
+                alert(result.message + ' Reloading page...');
+            }
+            setTimeout(() => window.location.reload(), 2000);
         } else {
-            if (errorDiv) errorDiv.textContent = result.message || 'Login failed';
+            if (errorDiv) {
+                errorDiv.textContent = result.message || 'Login failed';
+            } else {
+                alert(result.message || 'Login failed');
+            }
         }
     } catch (err) {
-        alert('Network error or server is down.');
+        const errorMessage = 'Network error or server is down.';
+        if (errorDiv) {
+            errorDiv.textContent = errorMessage;
+        } else {
+            alert(errorMessage);
+        }
         console.error(err);
     }
 });

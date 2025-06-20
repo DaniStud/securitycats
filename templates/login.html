@@ -7,30 +7,24 @@
     <script type="module" async src="{{ url_for('static', filename='login.js') }}"></script>
 </head>
 <body>
-
     <header>
         <a href="{{ url_for('index') }}">Security Cats</a>        
     </header>
 
     <section>
+        <div id="login_error" style="color: red; margin-bottom: 10px;"></div>
         <form id="login_form">
             <div>
                 <label for="name">Username</label>
                 <input type="text" id="name" name="name">
             </div>
-
             <div>
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password">
                 <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token }}">
-
             </div>
-
             <input type="submit" value="Login">
         </form>
     </section>
-
 </body>
 </html>
-
-
