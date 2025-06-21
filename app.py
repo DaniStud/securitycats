@@ -23,6 +23,7 @@ db_config = {
 # In-memory rate limit store: {ip: [datetime, ...]}
 comment_rate_limit = {}
 login_rate_limit = {}
+article_rate_limit = {}
 
 ####################################
 # ROUTES
@@ -119,98 +120,226 @@ def get_article_with_comments(article_id):
 @app.route('/submit_article', methods=['POST'])
 def submit():
     if 'user_id' not in session:
+        # Log unauthorized attempt
+        ip = request.remote_addr
+        now = datetime.utcnow()
+        username = session.get('name', 'anonymous')
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO article_attempts (timestamp, ip_address, username, success, error_message) VALUES (%s, %s, %s, %s, %s)",
+            (now, ip, username, False, 'Authentication required')
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
         return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+    
     try:
+        ip = request.remote_addr
+        now = datetime.utcnow()
+        username = session.get('name', 'anonymous')
+        
+        # Rate limiting: 1 article per minute per IP
+        window_start = now - timedelta(minutes=1)
+        if ip in article_rate_limit:
+            article_rate_limit[ip] = [t for t in article_rate_limit[ip] if t > window_start]
+        else:
+            article_rate_limit[ip] = []
+        if len(article_rate_limit[ip]) >= 1:
+            # Log failed attempt due to rate limit
+            conn = mysql.connector.connect(**db_config)
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO article_attempts (timestamp, ip_address, username, success, error_message) VALUES (%s, %s, %s, %s, %s)",
+                (now, ip, username, False, 'Rate limit exceeded: max 1 article per minute')
+            )
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({'status': 'error', 'message': 'Rate limit exceeded: max 1 article per minute'}), 429
+        article_rate_limit[ip].append(now)
+
         data = request.get_json()
         client_csrf_token = data.get('csrf_token')
         server_csrf_token = session.get('csrf_token')
         csrf_expiry = session.get('csrf_token_expiry')
+        
+        # Initialize logging variables
+        success = False
+        error_message = None
+
         if not client_csrf_token or not server_csrf_token or client_csrf_token != server_csrf_token:
-            return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
-        if not csrf_expiry or datetime.utcnow().timestamp() > csrf_expiry:
+            error_message = 'Invalid CSRF token'
+        elif not csrf_expiry or datetime.utcnow().timestamp() > csrf_expiry:
+            error_message = 'CSRF token expired'
             session.pop('csrf_token', None)
             session.pop('csrf_token_expiry', None)
-            return jsonify({'status': 'error', 'message': 'CSRF token expired'}), 403
-        session.pop('csrf_token', None)
-        session.pop('csrf_token_expiry', None)
-        atitle = data.get('atitle')
-        article = data.get('article')
-        def sanitize_article(text):
-            allowed = re.compile(r"[^a-zA-Z0-9 .,!?@#\-_'\"\(\)\[\]:;\n]", re.UNICODE)
-            text = allowed.sub('', text)
-            text = text[:1000]
-            return text
-        sanitized_title = sanitize_article(atitle) if atitle else ''
-        sanitized_article = sanitize_article(article) if article else ''
-        if not sanitized_title:
-            return jsonify({'status': 'error', 'message': 'Article title is required and must contain valid characters'}), 400
-        if not sanitized_article:
-            return jsonify({'status': 'error', 'message': 'Article content is required and must contain valid characters'}), 400
+        else:
+            # Invalidate token after use
+            session.pop('csrf_token', None)
+            session.pop('csrf_token_expiry', None)
+            atitle = data.get('atitle')
+            article = data.get('article')
+            def sanitize_article(text):
+                allowed = re.compile(r"[^a-zA-Z0-9 .,!?@#\-_'\"\(\)\[\]:;\n]", re.UNICODE)
+                text = allowed.sub('', text)
+                text = text[:1000]
+                return text
+            sanitized_title = sanitize_article(atitle) if atitle else ''
+            sanitized_article = sanitize_article(article) if article else ''
+            if not sanitized_title:
+                error_message = 'Article title is required and must contain valid characters'
+            elif not sanitized_article:
+                error_message = 'Article content is required and must contain valid characters'
+            else:
+                conn = mysql.connector.connect(**db_config)
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO articles (title, article) VALUES (%s, %s)", (sanitized_title, sanitized_article))
+                conn.commit()
+                success = True
+                error_message = 'Article submitted successfully'
+                cursor.close()
+                conn.close()
+
+        # Log the article attempt
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO articles (title, article) VALUES (%s, %s)", (sanitized_title, sanitized_article))
+        cursor.execute(
+            "INSERT INTO article_attempts (timestamp, ip_address, username, success, error_message) VALUES (%s, %s, %s, %s, %s)",
+            (now, ip, username, success, error_message)
+        )
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'status': 'success'})
+
+        if success:
+            return jsonify({'status': 'success'})
+        else:
+            safe_message = re.sub(r'[^a-zA-Z0-9 .,!?@#\-_"]', '', error_message)[:200]
+            status_code = 403 if 'CSRF' in error_message else 400
+            return jsonify({'status': 'error', 'message': safe_message}), status_code
+
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        safe_message = re.sub(r'[^a-zA-Z0-9 .,!?@#\-_"]', '', str(e))[:200]
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO article_attempts (timestamp, ip_address, username, success, error_message) VALUES (%s, %s, %s, %s, %s)",
+            (now, ip, username, False, safe_message)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'status': 'error', 'message': safe_message}), 500
 
 @app.route('/submit_comment', methods=['POST'])
 def submit_comment():
     try:
         ip = request.remote_addr
         now = datetime.utcnow()
-        window_start = now - timedelta(hours=1)
+        username = session.get('name', 'anonymous')
+        
+        # Rate limiting: 1 comment per minute per IP
+        window_start = now - timedelta(minutes=1)
         if ip in comment_rate_limit:
             comment_rate_limit[ip] = [t for t in comment_rate_limit[ip] if t > window_start]
         else:
             comment_rate_limit[ip] = []
-        if len(comment_rate_limit[ip]) >= 20:
-            return jsonify({'status': 'error', 'message': 'Rate limit exceeded: max 20 comments per hour per IP'}), 429
+        if len(comment_rate_limit[ip]) >= 1:
+            # Log failed attempt due to rate limit
+            conn = mysql.connector.connect(**db_config)
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO comment_attempts (timestamp, ip_address, username, article_id, success, error_message) VALUES (%s, %s, %s, %s, %s, %s)",
+                (now, ip, username, None, False, 'Rate limit exceeded: max 1 comment per minute')
+            )
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({'status': 'error', 'message': 'Rate limit exceeded: max 1 comment per minute'}), 429
         comment_rate_limit[ip].append(now)
+
         data = request.get_json()
         article_id = data.get('article_id')
         comment = data.get('comment')
         client_csrf_token = data.get('csrf_token')
         server_csrf_token = session.get('csrf_token')
         csrf_expiry = session.get('csrf_token_expiry')
+
+        # Initialize logging variables
+        success = False
+        error_message = None
+        article_id_int = None
+
         if not client_csrf_token or not server_csrf_token or client_csrf_token != server_csrf_token:
-            return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
-        if not csrf_expiry or datetime.utcnow().timestamp() > csrf_expiry:
+            error_message = 'Invalid CSRF token'
+        elif not csrf_expiry or datetime.utcnow().timestamp() > csrf_expiry:
+            error_message = 'CSRF token expired'
             session.pop('csrf_token', None)
             session.pop('csrf_token_expiry', None)
-            return jsonify({'status': 'error', 'message': 'CSRF token expired'}), 403
-        session.pop('csrf_token', None)
-        session.pop('csrf_token_expiry', None)
-        if not article_id:
-            return jsonify({'status': 'error', 'message': 'Article ID is required'}), 400
-        try:
-            article_id_int = int(article_id)
-            if article_id_int <= 0:
-                return jsonify({'status': 'error', 'message': 'Article ID must be a positive integer'}), 400
-        except (ValueError, TypeError):
-            return jsonify({'status': 'error', 'message': 'Article ID must be a positive integer'}), 400
-        if not comment:
-            return jsonify({'status': 'error', 'message': 'Comment content is required'}), 400
-        allowed = re.compile(r"^[a-zA-Z0-9 .,!?@#\-_'\"\(\)\[\]:;\n]{1,1000}$", re.UNICODE)
-        if not allowed.match(comment):
-            return jsonify({'status': 'error', 'message': 'Comment contains invalid characters or is too long (max 1000)'}), 400
-        def sanitize_comment(comment):
-            allowed = re.compile(r"[^a-zA-Z0-9 .,!?@#\-_'\"\(\)\[\]:;\n]", re.UNICODE)
-            comment = allowed.sub('', comment)
-            comment = comment[:1000]
-            return comment
-        sanitized_comment = sanitize_comment(comment)
+        elif not article_id:
+            error_message = 'Article ID is required'
+        else:
+            try:
+                article_id_int = int(article_id)
+                if article_id_int <= 0:
+                    error_message = 'Article ID must be a positive integer'
+            except (ValueError, TypeError):
+                error_message = 'Article ID must be a positive integer'
+            if not error_message:
+                if not comment:
+                    error_message = 'Comment content is required'
+                else:
+                    allowed = re.compile(r"^[a-zA-Z0-9 .,!?@#\-_'\"\(\)\[\]:;\n]{1,1000}$", re.UNICODE)
+                    if not allowed.match(comment):
+                        error_message = 'Comment contains invalid characters or is too long (max 1000)'
+                    else:
+                        def sanitize_comment(comment):
+                            allowed = re.compile(r"[^a-zA-Z0-9 .,!?@#\-_'\"\(\)\[\]:;\n]", re.UNICODE)
+                            comment = allowed.sub('', comment)
+                            comment = comment[:1000]
+                            return comment
+                        sanitized_comment = sanitize_comment(comment)
+                        conn = mysql.connector.connect(**db_config)
+                        cursor = conn.cursor()
+                        cursor.execute("INSERT INTO comments (article_id, content) VALUES (%s, %s)", (article_id_int, sanitized_comment))
+                        conn.commit()
+                        success = True
+                        error_message = 'Comment submitted successfully'
+                        cursor.close()
+                        conn.close()
+
+        # Log the comment attempt
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO comments (article_id, content) VALUES (%s, %s)", (article_id_int, sanitized_comment))
+        cursor.execute(
+            "INSERT INTO comment_attempts (timestamp, ip_address, username, article_id, success, error_message) VALUES (%s, %s, %s, %s, %s, %s)",
+            (now, ip, username, article_id_int, success, error_message)
+        )
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'status': 'success', 'message': 'Comment submitted successfully'})
+
+        if success:
+            return jsonify({'status': 'success', 'message': 'Comment submitted successfully'})
+        else:
+            safe_message = re.sub(r'[^a-zA-Z0-9 .,!?@#\-_"]', '', error_message)[:200]
+            status_code = 403 if 'CSRF' in error_message else 400
+            return jsonify({'status': 'error', 'message': safe_message}), status_code
+
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        safe_message = re.sub(r'[^a-zA-Z0-9 .,!?@#\-_"]', '', str(e))[:200]
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO comment_attempts (timestamp, ip_address, username, article_id, success, error_message) VALUES (%s, %s, %s, %s, %s, %s)",
+            (now, ip, username, None, False, safe_message)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'status': 'error', 'message': safe_message}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
