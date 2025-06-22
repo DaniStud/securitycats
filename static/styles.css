@@ -1,7 +1,8 @@
 *{
     margin: 0;
     padding: 0;
-    background-color: grey;
+    background-color: rgb(23, 22, 22);
+    color: rgb(251, 239, 239);
 }
 
 
@@ -22,7 +23,7 @@ border-top: 1px solid grey;
 
 header{
     margin-bottom: 5em;
-    background-color: #231F20;
+    background-color: rgb(23, 22, 22);
     min-height: 66px;
     display: flex; justify-content: space-between; padding-right: 20%;
     a{
@@ -47,5 +48,5 @@ header{
 body section{
     margin-left: 33vw;
     margin-right: 33vw;
-    border-bottom: 1px solid grey;
+    border-bottom: 1px solid grey; 
 }
