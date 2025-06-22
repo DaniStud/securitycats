@@ -14,6 +14,25 @@
             padding: 10px;
             margin: 10px 0;
             position: relative;
+            display: flex;
+            align-items: flex-start;
+        }
+        .comment-username {
+            font-weight: bold;
+            margin: 0 10px 5px 0;
+            text-decoration: none;
+            color: #0066cc;
+        }
+        .comment-username:hover {
+            text-decoration: underline;
+        }
+        .comment-profile-pic {
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        .comment-content {
+            margin: 0;
+            flex-grow: 1;
         }
         .delete-button {
             position: absolute;
@@ -32,9 +51,8 @@
 </head>
 <body>
     <header>
-        <a href="{{ url_for('index') }}">Security Cats</a>     
-                <button onclick="window.location.href='/logout'">Logout</button>
-   
+        <a href="{{ url_for('index') }}">Security Cats</a>        
+        <a href="{{ url_for('users_list') }}">Users</a>
     </header>
 
     <section>

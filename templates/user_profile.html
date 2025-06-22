@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script type="module" async src="{{ url_for('static', filename='profile.js') }}"></script>
+    <style>
+        /* Ensure dropdown is visible */
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            display: block; /* Ensure it takes full width and is visible */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="{{ url_for('index') }}">Security Cats</a>
+    </header>
+
+    <section>
+        <h1>Edit Profile</h1>
+
+        <!-- Profile Preview Section -->
+        <div class="profile-preview">
+            <h2>Profile Preview</h2>
+            {% if user_data.profile_pic %}
+                <img src="{{ url_for('static', filename='uploads/' + user_data.profile_pic) }}" alt="Profile Picture" style="max-width: 200px; max-height: 200px;">
+            {% else %}
+                <p>No profile picture uploaded.</p>
+            {% endif %}
+            <p><strong>Bio:</strong> {{ user_data.bio if user_data.bio else 'No bio set.' }}</p>
+            {% if user_data.country_visible or session.get('role') == 'admin' %}
+                <p><strong>Country:</strong> {{ user_data.country if user_data.country else 'No country set.' }}</p>
+            {% else %}
+                <p><strong>Country:</strong> (Private - not visible)</p>
+            {% endif %}
+        </div>
+
+        <hr style="margin: 20px 0;">
+
+        <div id="profile_error" style="color: red; margin-bottom: 10px;"></div>
+        <form id="profile_form" enctype="multipart/form-data">
+            <div>
+                <label for="profile_pic">Profile Picture</label>
+                <input type="file" id="profile_pic" name="profile_pic" accept="image/*">
+                {% if user_data.profile_pic %}
+                    <img src="{{ url_for('static', filename='uploads/' + user_data.profile_pic) }}" alt="Current Profile Picture" style="max-width: 200px; max-height: 200px;">
+                {% endif %}
+            </div>
+            <div>
+                <label for="bio">Bio</label>
+                <textarea id="bio" name="bio">{{ user_data.bio if user_data.bio else '' }}</textarea>
+            </div>
+            <div>
+                <label for="country">Country</label>
+                <select id="country" name="country" required>
+                    {% for country in countries %}
+                        <option value="{{ country }}" {% if user_data.country == country %}selected{% endif %}>{{ country }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>
+                    <input type="checkbox" id="country_visible" name="country_visible" {% if user_data.country_visible %}checked{% endif %}>
+                    Make Country Public
+                </label>
+            </div>
+            <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token }}">
+            <input type="submit" value="Save Changes">
+        </form>
+    </section>
+</body>
+</html>

@@ -71,9 +71,31 @@ function insertCommentsIntoPage(posted_comments) {
     posted_comments.forEach(comment => {
         const commentDiv = document.createElement('div');
         commentDiv.className = 'comment';
-        const p = document.createElement('p');
-        p.textContent = comment.content;
-        commentDiv.appendChild(p);
+        
+        // Display username with link to profile
+        const usernameLink = document.createElement('a');
+        usernameLink.className = 'comment-username';
+        usernameLink.href = `/user_profile/${comment.user_id}`; // Link to user's profile
+        usernameLink.textContent = `Posted by: ${comment.name || 'Unknown'}`;
+        commentDiv.appendChild(usernameLink);
+
+        // Display profile picture if available
+        if (comment.profile_pic) {
+            const profilePic = document.createElement('img');
+            profilePic.className = 'comment-profile-pic';
+            profilePic.src = `/static/uploads/${comment.profile_pic}`;
+            profilePic.alt = `${comment.name || 'Unknown'}'s profile picture`;
+            profilePic.style.maxWidth = '50px';
+            profilePic.style.maxHeight = '50px';
+            profilePic.style.borderRadius = '50%'; // Circular image
+            commentDiv.appendChild(profilePic);
+        }
+
+        // Display comment content
+        const content = document.createElement('p');
+        content.className = 'comment-content';
+        content.textContent = comment.content || 'No content';
+        commentDiv.appendChild(content);
 
         // Add delete button only for admin or moderator
         if (isAuthorizedToDelete()) {

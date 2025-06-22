@@ -82,12 +82,12 @@ document.getElementById('signup_form').addEventListener('submit', async (e) => {
 
     const name = document.getElementById('signup_name').value;
     const password = document.getElementById('signup_password').value;
-    const role = document.getElementById('role').value;
+    const country = document.getElementById('country').value;
     const csrf_token = document.getElementById('csrf_token').value;
     const errorDiv = document.getElementById('signup_error');
 
     // Client-side validation
-    if (!name || !password || !role) {
+    if (!name || !password || !country) {
         if (errorDiv) {
             errorDiv.textContent = 'All fields are required!';
         } else {
@@ -128,7 +128,7 @@ document.getElementById('signup_form').addEventListener('submit', async (e) => {
         const res = await fetch('/signup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, password, role, csrf_token })
+            body: JSON.stringify({ name, password, country, csrf_token })
         });
 
         const result = await res.json();

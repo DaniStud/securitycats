@@ -1,17 +1,20 @@
-from flask import Flask, request, jsonify, redirect, url_for
+from flask import Flask, request, jsonify, redirect, url_for, render_template
 from flask_cors import CORS
 import mysql.connector
-from flask import render_template
-from flask_bcrypt import Bcrypt
-bcrypt = Bcrypt()
 from flask import session
 import re
-import os 
+import os
 import secrets
 from datetime import datetime, timedelta
+from flask_bcrypt import Bcrypt
+import uuid
 
 app = Flask(__name__)
 app.secret_key = 'your-super-super-secret-key'  # Required for session encryption
+app.config['UPLOAD_FOLDER'] = 'static/uploads'  # Folder for profile pictures
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+bcrypt = Bcrypt()
 
 db_config = {
     'host': 'localhost',
@@ -26,9 +29,35 @@ login_rate_limit = {}
 article_rate_limit = {}
 signup_rate_limit = {}
 
+# List of countries for dropdown
+COUNTRIES = [
+    'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia',
+    'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin',
+    'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi',
+    'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia',
+    'Comoros', 'Congo (Congo-Brazzaville)', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czechia', 'Denmark', 'Djibouti',
+    'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia',
+    'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'France', 'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece',
+    'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland', 'India',
+    'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya',
+    'Kiribati', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein',
+    'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands',
+    'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco',
+    'Mozambique', 'Myanmar', 'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria',
+    'North Korea', 'North Macedonia', 'Norway', 'Oman', 'Pakistan', 'Palau', 'Panama', 'Papua New Guinea', 'Paraguay',
+    'Peru', 'Philippines', 'Poland', 'Portugal', 'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saint Kitts and Nevis',
+    'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia',
+    'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands',
+    'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden',
+    'Switzerland', 'Syria', 'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga',
+    'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda', 'Ukraine', 'United Arab Emirates',
+    'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam',
+    'Yemen', 'Zambia', 'Zimbabwe'
+]
+
 ####################################
 # ROUTES
-###################################    
+####################################
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -52,7 +81,7 @@ def login_page():
     csrf_token = secrets.token_hex(32)
     session['csrf_token'] = csrf_token
     session['csrf_token_expiry'] = (datetime.utcnow() + timedelta(minutes=30)).timestamp()
-    return render_template('login.html', csrf_token=csrf_token)
+    return render_template('login.html', csrf_token=csrf_token, countries=COUNTRIES)
 
 @app.route('/article/<int:article_id>')
 def render_article(article_id):
@@ -73,6 +102,111 @@ def render_article(article_id):
             return "<h1>404 - Article not found</h1>", 404
     except Exception as e:
         return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
+
+@app.route('/users')
+def users_list():
+    csrf_token = secrets.token_hex(32)
+    session['csrf_token'] = csrf_token
+    session['csrf_token_expiry'] = (datetime.utcnow() + timedelta(minutes=30)).timestamp()
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, name, profile_pic FROM users")
+        users = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template('users.html', csrf_token=csrf_token, users=users)
+    except Exception as e:
+        return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
+
+@app.route('/user_profile/<int:user_id>')
+def view_user_profile(user_id):
+    csrf_token = secrets.token_hex(32)
+    session['csrf_token'] = csrf_token
+    session['csrf_token_expiry'] = (datetime.utcnow() + timedelta(minutes=30)).timestamp()
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT profile_pic, bio, country, country_visible FROM users WHERE id = %s", (user_id,))
+        user_data = cursor.fetchone()
+        if not user_data:
+            return "<h1>404 - User not found</h1>", 404
+        cursor.close()
+        conn.close()
+        # Determine visibility based on current user's role
+        is_admin = session.get('role') == 'admin'
+        return render_template('user_profile_view.html', csrf_token=csrf_token, user_data=user_data, is_admin=is_admin)
+    except Exception as e:
+        return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
+
+@app.route('/user_profile', methods=['GET'])
+def user_profile():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+    csrf_token = secrets.token_hex(32)
+    session['csrf_token'] = csrf_token
+    session['csrf_token_expiry'] = (datetime.utcnow() + timedelta(minutes=30)).timestamp()
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT profile_pic, bio, country, country_visible FROM users WHERE id = %s", (session['user_id'],))
+        user_data = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return render_template('user_profile.html', csrf_token=csrf_token, user_data=user_data, countries=COUNTRIES)
+    except Exception as e:
+        return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
+
+@app.route('/update_profile', methods=['POST'])
+def update_profile():
+    if 'user_id' not in session:
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+    try:
+        data = request.form
+        client_csrf_token = data.get('csrf_token')
+        server_csrf_token = session.get('csrf_token')
+        csrf_expiry = session.get('csrf_token_expiry')
+
+        if not client_csrf_token or not server_csrf_token or client_csrf_token != server_csrf_token:
+            return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
+        elif not csrf_expiry or datetime.utcnow().timestamp() > csrf_expiry:
+            session.pop('csrf_token', None)
+            session.pop('csrf_token_expiry', None)
+            return jsonify({'status': 'error', 'message': 'CSRF token expired'}), 403
+
+        bio = data.get('bio', '').strip()[:500]
+        country = data.get('country', '').strip()[:100]
+        country_visible = data.get('country_visible') == 'on'
+
+        # Handle profile picture upload
+        profile_pic = None
+        if 'profile_pic' in request.files:
+            file = request.files['profile_pic']
+            if file and file.filename:
+                filename = f"{uuid.uuid4()}_{file.filename}"
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                profile_pic = filename
+
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        update_query = "UPDATE users SET bio = %s, country = %s, country_visible = %s"
+        params = [bio, country, country_visible]
+        if profile_pic:
+            update_query += ", profile_pic = %s"
+            params.append(profile_pic)
+        update_query += " WHERE id = %s"
+        params.append(session['user_id'])
+        cursor.execute(update_query, params)
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        session.pop('csrf_token', None)
+        session.pop('csrf_token_expiry', None)
+        return jsonify({'status': 'success', 'message': 'Profile updated successfully'})
+    except Exception as e:
+        safe_message = re.sub(r'[^a-zA-Z0-9 .,!?@#\-_"]', '', str(e))[:200]
+        return jsonify({'status': 'error', 'message': safe_message}), 500
 
 ###########################################
 # GET
@@ -97,7 +231,12 @@ def get_article_with_comments(article_id):
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM articles WHERE article_id = %s", (article_id,))
         article = cursor.fetchone()
-        cursor.execute("SELECT * FROM comments WHERE article_id = %s", (article_id,))
+        cursor.execute("""
+            SELECT c.*, u.name, u.profile_pic 
+            FROM comments c 
+            LEFT JOIN users u ON c.user_id = u.id 
+            WHERE c.article_id = %s
+        """, (article_id,))
         comments = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -247,24 +386,24 @@ def submit_comment():
         now = datetime.utcnow()
         username = session.get('name', 'anonymous')
         
-        # Rate limiting: 5 comment per minute per IP
+        # Rate limiting: 1 comment per minute per IP
         window_start = now - timedelta(minutes=1)
         if ip in comment_rate_limit:
             comment_rate_limit[ip] = [t for t in comment_rate_limit[ip] if t > window_start]
         else:
             comment_rate_limit[ip] = []
-        if len(comment_rate_limit[ip]) >= 5:
+        if len(comment_rate_limit[ip]) >= 1:
             # Log failed attempt due to rate limit
             conn = mysql.connector.connect(**db_config)
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO comment_attempts (timestamp, ip_address, username, article_id, success, error_message) VALUES (%s, %s, %s, %s, %s, %s)",
-                (now, ip, username, None, False, 'Rate limit exceeded: max 5 comments per minute')
+                (now, ip, username, None, False, 'Rate limit exceeded: max 1 comment per minute')
             )
             conn.commit()
             cursor.close()
             conn.close()
-            return jsonify({'status': 'error', 'message': 'Rate limit exceeded: max 5 comments per minute'}), 429
+            return jsonify({'status': 'error', 'message': 'Rate limit exceeded: max 1 comment per minute'}), 429
         comment_rate_limit[ip].append(now)
 
         data = request.get_json()
@@ -310,7 +449,7 @@ def submit_comment():
                         sanitized_comment = sanitize_comment(comment)
                         conn = mysql.connector.connect(**db_config)
                         cursor = conn.cursor()
-                        cursor.execute("INSERT INTO comments (article_id, content) VALUES (%s, %s)", (article_id_int, sanitized_comment))
+                        cursor.execute("INSERT INTO comments (article_id, content, user_id) VALUES (%s, %s, %s)", (article_id_int, sanitized_comment, session['user_id']))
                         conn.commit()
                         success = True
                         error_message = 'Comment submitted successfully'
@@ -414,6 +553,7 @@ def signup():
         data = request.get_json()
         name = data.get('name')
         password = data.get('password')
+        country = data.get('country')
         client_csrf_token = data.get('csrf_token')
         server_csrf_token = session.get('csrf_token')
         csrf_expiry = session.get('csrf_token_expiry')
@@ -427,12 +567,14 @@ def signup():
             return jsonify({'status': 'error', 'message': 'CSRF token expired'}), 403
 
         # Validate inputs
-        if not name or not password:
-            return jsonify({'status': 'error', 'message': 'Name and password are required'}), 400
+        if not name or not password or not country:
+            return jsonify({'status': 'error', 'message': 'Name, password, and country are required'}), 400
         if len(name) > 50 or not re.match(r'^[a-zA-Z0-9_.-]+$', name):
             return jsonify({'status': 'error', 'message': 'Invalid username'}), 400
         if len(password) < 12 or not re.search(r'[A-Z]', password) or not re.search(r'[a-z]', password) or not re.search(r'[0-9]', password) or not re.search(r'[^a-zA-Z0-9]', password):
             return jsonify({'status': 'error', 'message': 'Password must be at least 12 characters with upper, lower, digit, and special character'}), 400
+        if country not in COUNTRIES:
+            return jsonify({'status': 'error', 'message': 'Invalid country'}), 400
 
         # Check if username already exists
         conn = mysql.connector.connect(**db_config)
@@ -443,9 +585,9 @@ def signup():
             conn.close()
             return jsonify({'status': 'error', 'message': 'Username already exists'}), 409
 
-        # Hash password and insert user with default role 'user'
+        # Hash password and insert user with default role 'user' and country
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-        cursor.execute("INSERT INTO users (name, password, role) VALUES (%s, %s, %s)", (name, hashed_password, 'user'))
+        cursor.execute("INSERT INTO users (name, password, role, country, country_visible) VALUES (%s, %s, %s, %s, %s)", (name, hashed_password, 'user', country, False))
         conn.commit()
         cursor.close()
         conn.close()
@@ -461,7 +603,7 @@ def signup():
 @app.route('/login', methods=['POST'])
 def login():
     try:
-        # Rate limiting: max 5 login attempts per 20 minutes per IP
+        # Rate limiting: max 5 failed login attempts per 20 minutes per IP
         ip = request.remote_addr
         now = datetime.utcnow()
         window_start = now - timedelta(minutes=20)
@@ -469,19 +611,6 @@ def login():
             login_rate_limit[ip] = [t for t in login_rate_limit[ip] if t > window_start]
         else:
             login_rate_limit[ip] = []
-        if len(login_rate_limit[ip]) >= 5:
-            # Log failed attempt due to rate limit
-            conn = mysql.connector.connect(**db_config)
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO login_attempts (timestamp, ip_address, username, success, error_message) VALUES (%s, %s, %s, %s, %s)",
-                (now, ip, 'unknown', False, 'Too many login attempts')
-            )
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return jsonify({'status': 'error', 'message': 'Too many login attempts. Please wait and try again.'}), 429
-        login_rate_limit[ip].append(now)
 
         # Validate CSRF token and expiry
         data = request.get_json()
@@ -546,8 +675,6 @@ def login():
                         redirect_url = '/'  # Default fallback
                 else:
                     error_message = 'Invalid username or password'
-                cursor.close()
-                conn.close()
 
         # Log the login attempt
         conn = mysql.connector.connect(**db_config)
@@ -559,6 +686,12 @@ def login():
         conn.commit()
         cursor.close()
         conn.close()
+
+        # Apply rate limiting only for failed attempts
+        if not success and len(login_rate_limit[ip]) >= 5:
+            return jsonify({'status': 'error', 'message': 'Too many login attempts. Please wait and try again.'}), 429
+        elif not success:
+            login_rate_limit[ip].append(now)
 
         if success:
             return jsonify({'status': 'success', 'message': 'Login successful', 'redirect': redirect_url})

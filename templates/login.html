@@ -5,6 +5,15 @@
     <title>Login</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script type="module" async src="{{ url_for('static', filename='login.js') }}"></script>
+    <style>
+        /* Ensure dropdown is visible */
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            display: block; /* Ensure it takes full width and is visible */
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -15,7 +24,6 @@
         <div id="login_error" style="color: red; margin-bottom: 10px;"></div>
         <form id="login_form">
             <div>
-                <h3>Login</h3>
                 <label for="name">Username</label>
                 <input type="text" id="name" name="name">
             </div>
@@ -32,8 +40,6 @@
         <div id="signup_error" style="color: red; margin-bottom: 10px;"></div>
         <form id="signup_form">
             <div>
-                                <h3>Signup</h3>
-
                 <label for="signup_name">Username</label>
                 <input type="text" id="signup_name" name="signup_name">
             </div>
@@ -41,6 +47,14 @@
                 <label for="signup_password">Password</label>
                 <input type="password" id="signup_password" name="signup_password">
                 <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token }}">
+            </div>
+            <div>
+                <label for="country">Country</label>
+                <select id="country" name="country" required>
+                    {% for country in countries %}
+                        <option value="{{ country }}">{{ country }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <input type="submit" id="signup_button" value="Signup">
         </form>
