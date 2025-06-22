@@ -247,24 +247,24 @@ def submit_comment():
         now = datetime.utcnow()
         username = session.get('name', 'anonymous')
         
-        # Rate limiting: 1 comment per minute per IP
+        # Rate limiting: 5 comment per minute per IP
         window_start = now - timedelta(minutes=1)
         if ip in comment_rate_limit:
             comment_rate_limit[ip] = [t for t in comment_rate_limit[ip] if t > window_start]
         else:
             comment_rate_limit[ip] = []
-        if len(comment_rate_limit[ip]) >= 1:
+        if len(comment_rate_limit[ip]) >= 5:
             # Log failed attempt due to rate limit
             conn = mysql.connector.connect(**db_config)
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO comment_attempts (timestamp, ip_address, username, article_id, success, error_message) VALUES (%s, %s, %s, %s, %s, %s)",
-                (now, ip, username, None, False, 'Rate limit exceeded: max 1 comment per minute')
+                (now, ip, username, None, False, 'Rate limit exceeded: max 5 comments per minute')
             )
             conn.commit()
             cursor.close()
             conn.close()
-            return jsonify({'status': 'error', 'message': 'Rate limit exceeded: max 1 comment per minute'}), 429
+            return jsonify({'status': 'error', 'message': 'Rate limit exceeded: max 5 comments per minute'}), 429
         comment_rate_limit[ip].append(now)
 
         data = request.get_json()
