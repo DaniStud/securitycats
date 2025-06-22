@@ -3,39 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Access</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script type="module" async src="{{ url_for('static', filename='admin.js') }}"></script>
-
+    <title>Security Cats</title>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    
-        <header>
-        <a href="{{ url_for('index') }}">Security Cats</a>   
-        <button onclick="window.location.href='/logout'">Logout</button>
-     
-        </header>
-
-        <section>
-            <form id="article_form">
-                <div>
-                    <label for="atitle">Article Title</label>
-                    <div>
-                        <input type="text" id="atitle" name="atitle" value="{{ atitle|e if atitle is defined else '' }}">
-                    </div>
-                </div>
-                        <div>
-                    <div>
-                        <label for="article">Write your blog post here</label>
-                    </div>
-                    <input type="text" id="article" name="article" required value="{{ article|e if article is defined else '' }}">
-                    <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token }}">
-                </div>
-                <input type="submit" value="Submit">    
-            </form> 
-        </section>
-
-
-
+    <header>
+        <a href="/">Security Cats</a>
+        <a href="/logout">Logout</a>
+    </header>
+    <section>
+        <form id="article_form">
+            <input type="hidden" id="csrf_token" value="{{ csrf_token|e }}">
+            <div>
+                <label for="atitle">Article Title</label>
+                <input type="text" id="atitle" name="atitle">
+            </div>
+            <div>
+                <label for="article">Write your blog post here</label>
+                <textarea id="article" name="article"></textarea>
+            </div>
+            <div id="article_error" class="error"></div>
+            <button type="submit">Submit Article</button>
+        </form>
+    </section>
+    <script src="/static/admin.js"></script>
 </body>
 </html>

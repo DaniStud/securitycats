@@ -3,26 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Cats Frontpage</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-<script type="module" async src="{{ url_for('static', filename='browse.js') }}"></script>
+    <title>Security Cats</title>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-
-        <header>
-        <a href="{{ url_for('index') }}">Security Cats</a>   
-                <button onclick="window.location.href='/logout'">Logout</button>
-     
-        </header>
-
-        <section id="articles">
-            {% for article in articles %}
-            <article>
-                <h1>{{ article.title|e }}</h1>
-                <p>{{ article.article|e }}</p>
-            </article>
-            {% endfor %}
-        </section>
-    
+    <header>
+        <a href="/">Security Cats</a>
+        <a href="/logout">Logout</a>
+    </header>
+    <section id="articles">
+        <!-- Articles will be inserted here by JavaScript -->
+    </section>
+    <script src="/static/browse.js"></script>
 </body>
 </html>

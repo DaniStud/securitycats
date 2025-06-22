@@ -3,87 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script type="module" async src="{{ url_for('static', filename='read.js') }}"></script>
-
-    <title>{{ article.title }}</title>
-
-    <style>
-        .comment {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin: 10px 0;
-            position: relative;
-            display: flex;
-            align-items: flex-start;
-        }
-        .comment-username {
-            font-weight: bold;
-            margin: 0 10px 5px 0;
-            text-decoration: none;
-            color: #0066cc;
-        }
-        .comment-username:hover {
-            text-decoration: underline;
-        }
-        .comment-profile-pic {
-            vertical-align: middle;
-            margin-right: 10px;
-        }
-        .comment-content {
-            margin: 0;
-            flex-grow: 1;
-        }
-        .delete-button {
-            position: absolute;
-            right: 10px;
-            top: 10px;
-            padding: 5px 10px;
-            background-color: #ff4444;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .delete-button:hover {
-            background-color: #cc0000;
-        }
-    </style>
+    <title>Security Cats</title>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <header>
-        <a href="{{ url_for('index') }}">Security Cats</a>        
-        <a href="{{ url_for('users_list') }}">Users</a>
+        <a href="/">Security Cats</a>
+        <a href="/users">Users</a>
     </header>
-
     <section>
-        <h1>{{ article.title|e }}</h1>
-        <p>{{ article.article|e }}</p>
+        <div class="articleWrapper">
+            <h1 class="articleTitle">{{ article.title|e }}</h1>
+            <p class="articleContent">{{ article.article|e }}</p>
+        </div>
     </section>
-
-    <section id="comment_section">
+    <section id="posted_comments">
+        <!-- Comments will be inserted here by JavaScript -->
+    </section>
+    <section>
         <form id="comment_form">
-            <div>
-                <div>
-                    <label for="article">Write your comment here</label>
-                </div>
-                <input type="text" id="comment" name="comment">
-            </div>
-            <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token }}">
-            <input type="submit" value="Submit">    
-        </form> 
-
-        <div id="posted_comments"></div>
-
-        <!-- Hidden input to pass role to JavaScript -->
-        <input type="hidden" id="user_role" value="{{ session.get('role', 'user') }}">
+            <input type="hidden" id="csrf_token" value="{{ csrf_token|e }}">
+            <input type="hidden" id="user_role" value="{{ role|e }}">
+            <textarea id="comment" placeholder="Write your comment here"></textarea>
+            <button type="submit">Post Comment</button>
+        </form>
     </section>
-
-    <script>
-        // Set the role in sessionStorage when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            const role = document.getElementById('user_role').value;
-            sessionStorage.setItem('role', role);
-        });
-    </script>
+    <script src="/static/read.js"></script>
 </body>
 </html>

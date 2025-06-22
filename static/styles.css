@@ -1,19 +1,18 @@
-*{
+* {
     margin: 0;
     padding: 0;
     background-color: rgb(23, 22, 22);
     color: rgb(251, 239, 239);
 }
 
-
-#comment_form{
-margin: 10em 0em 10em 0em;
-padding: 1em 0em 1em 0em;
-border-bottom: 1px solid grey;
-border-top: 1px solid grey;
+#comment_form {
+    margin: 10em 0em 10em 0em;
+    padding: 1em 0em 1em 0em;
+    border-bottom: 1px solid grey;
+    border-top: 1px solid grey;
 }
 
-.comment{
+.comment {
     border-bottom: 1px solid grey;
     border-top: 1px solid grey;
     padding: 1em;
@@ -21,32 +20,76 @@ border-top: 1px solid grey;
     margin-bottom: 4em;
 }
 
-header{
+.comment-profile-pic {
+    max-width: 50px;
+    max-height: 50px;
+    border-radius: 50%;
+}
+
+.comment-username {
+    color: white;
+    text-decoration: none;
+    display: block;
+    margin-bottom: 0.5em;
+}
+
+.comment-content {
+    margin-top: 0.5em;
+}
+
+.delete-button {
+    margin-top: 0.5em;
+    padding: 0.5em 1em;
+    background-color: #444;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.delete-button:hover {
+    background-color: #666;
+}
+
+header {
     margin-bottom: 5em;
     background-color: rgb(23, 22, 22);
     min-height: 66px;
-    display: flex; justify-content: space-between; padding-right: 20%;
-    a{
-        display: block;
-        padding-top: 1.2em;
-        margin-left: 16%;
-        color: white;
-        text-decoration: none;
-    }
+    display: flex;
+    justify-content: space-between;
+    padding-right: 20%;
 }
 
-.articleWrapper{
+header a {
+    display: block;
+    padding-top: 1.2em;
+    margin-left: 16%;
+    color: white;
+    text-decoration: none;
+}
+
+.articleWrapper {
     margin-bottom: 5em;
 }
 
-#article{
+#article {
     min-height: 6em;
     min-width: 36em;
 }
 
-
-body section{
+body section {
     margin-left: 33vw;
     margin-right: 33vw;
-    border-bottom: 1px solid grey; 
+    border-bottom: 1px solid grey;
+}
+
+.error {
+    color: #ff5555;
+    margin: 0.5em 0;
+}
+
+.profile-pic {
+    max-width: 100px;
+    max-height: 100px;
+    border-radius: 50%;
+    margin: 0.5em 0;
 }

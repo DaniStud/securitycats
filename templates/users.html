@@ -2,26 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Users</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Cats</title>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <header>
-        <a href="{{ url_for('index') }}">Security Cats</a>
+        <a href="/">Security Cats</a>
     </header>
-
     <section>
-        <h1>All Users</h1>
-        <ul>
+        <h2>All Users</h2>
+        <div>
             {% for user in users %}
-                <li>
-                    <a href="{{ url_for('view_user_profile', user_id=user.id) }}">{{ user.name }}</a>
+                <div>
+                    <a href="/user_profile/{{ user.id }}">{{ user.name }}</a>
                     {% if user.profile_pic %}
-                        <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}" alt="{{ user.name }}'s profile picture" style="max-width: 50px; max-height: 50px; border-radius: 50%;">
+                        <img src="/static/uploads/{{ user.profile_pic|e }}" alt="{{ user.name }}'s profile picture" class="profile-pic">
                     {% endif %}
-                </li>
+                </div>
             {% endfor %}
-        </ul>
+        </div>
     </section>
 </body>
 </html>

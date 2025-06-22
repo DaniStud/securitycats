@@ -104,7 +104,7 @@ def render_article(article_id):
             csrf_token = secrets.token_hex(32)
             session['csrf_token'] = csrf_token
             session['csrf_token_expiry'] = (datetime.utcnow() + timedelta(minutes=30)).timestamp()
-            return render_template('article.html', article=article, csrf_token=csrf_token)
+            return render_template('article.html', article=article, csrf_token=csrf_token, role=session.get('role', ''))
         else:
             return "<h1>404 - Article not found</h1>", 404
     except Exception as e:
@@ -264,6 +264,12 @@ def get_article_with_comments(article_id):
             return jsonify({'status': 'error', 'message': 'Article not found'}), 404
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/get_user_role', methods=['GET'])
+def get_user_role():
+    if 'user_id' in session:
+        return jsonify({'status': 'success', 'role': session.get('role', '')})
+    return jsonify({'status': 'error', 'role': ''}), 401
 
 ###########################################
 # POST
@@ -732,7 +738,14 @@ def apply_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;"
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self'; "
+        "img-src 'self' data:; "
+        "form-action 'self'; "
+        "connect-src 'self';"
+    )
     return response
 
 if __name__ == '__main__':

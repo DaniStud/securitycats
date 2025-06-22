@@ -1,4 +1,3 @@
-// Function to fetch the article by ID and insert it into the page
 async function fetchArticleById(articleId) {
     try {
         const response = await fetch(`/get_article/${articleId}`);
@@ -8,7 +7,8 @@ async function fetchArticleById(articleId) {
         const result = await response.json();
 
         if (result.status === 'success') {
-            insertArticleIntoPage(result.data);
+            insertArticleIntoPage(result.data.article);
+            insertCommentsIntoPage(result.data.comments);
         } else {
             console.error('Error fetching article:', result.message);
         }
@@ -17,20 +17,13 @@ async function fetchArticleById(articleId) {
     }
 }
 
-// Function to insert the article into the HTML
 function insertArticleIntoPage(article) {
     const section = document.querySelector('section');
-    const wrapper = document.createElement('div');
-    wrapper.className = 'articleWrapper';
-    const title = document.createElement('h1');
-    title.className = 'articleTitle';
-    title.textContent = article.title;
-    const content = document.createElement('p');
-    content.className = 'articleContent';
-    content.textContent = article.article;
-    wrapper.appendChild(title);
-    wrapper.appendChild(content);
-    section.appendChild(wrapper);
+    const wrapper = document.querySelector('.articleWrapper');
+    if (wrapper) {
+        wrapper.querySelector('.articleTitle').textContent = article.title;
+        wrapper.querySelector('.articleContent').textContent = article.article;
+    }
 }
 
 async function fetchArticleComments() {
@@ -72,37 +65,30 @@ function insertCommentsIntoPage(posted_comments) {
         const commentDiv = document.createElement('div');
         commentDiv.className = 'comment';
         
-        // Display username with link to profile
         const usernameLink = document.createElement('a');
         usernameLink.className = 'comment-username';
-        usernameLink.href = `/user_profile/${comment.user_id}`; // Link to user's profile
+        usernameLink.href = `/user_profile/${comment.user_id}`;
         usernameLink.textContent = `Posted by: ${comment.name || 'Unknown'}`;
         commentDiv.appendChild(usernameLink);
 
-        // Display profile picture if available
         if (comment.profile_pic) {
             const profilePic = document.createElement('img');
             profilePic.className = 'comment-profile-pic';
             profilePic.src = `/static/uploads/${comment.profile_pic}`;
             profilePic.alt = `${comment.name || 'Unknown'}'s profile picture`;
-            profilePic.style.maxWidth = '50px';
-            profilePic.style.maxHeight = '50px';
-            profilePic.style.borderRadius = '50%'; // Circular image
             commentDiv.appendChild(profilePic);
         }
 
-        // Display comment content
         const content = document.createElement('p');
         content.className = 'comment-content';
         content.textContent = comment.content || 'No content';
         commentDiv.appendChild(content);
 
-        // Add delete button only for admin or moderator
         if (isAuthorizedToDelete()) {
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Delete';
             deleteButton.className = 'delete-button';
-            deleteButton.onclick = () => removeComment(comment.comment_id);
+            deleteButton.addEventListener('click', () => removeComment(comment.comment_id));
             commentDiv.appendChild(deleteButton);
         }
 
@@ -111,14 +97,11 @@ function insertCommentsIntoPage(posted_comments) {
     section.appendChild(wrapper);
 }
 
-// Function to check if the user is authorized to delete comments
 function isAuthorizedToDelete() {
-    // Assuming role is stored in sessionStorage or fetched from an API
-    const role = sessionStorage.getItem('role'); // Adjust based on how you store the role
+    const role = document.getElementById('user_role')?.value;
     return role === 'admin' || role === 'moderator';
 }
 
-// Function to remove a comment
 async function removeComment(commentId) {
     const csrfToken = document.getElementById('csrf_token').value;
 
@@ -133,7 +116,7 @@ async function removeComment(commentId) {
 
         if (result.status === 'success') {
             alert('Comment removed successfully!');
-            fetchArticleComments(); // Refresh comments
+            fetchArticleComments();
         } else {
             alert(`Error: ${result.message}`);
         }
@@ -156,22 +139,35 @@ document.getElementById('comment_form').addEventListener('submit', async (e) => 
         return;
     }
 
-    const res = await fetch(`/submit_comment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ article_id: articleId, comment, csrf_token: csrfToken })
-    });
+    try {
+        const res = await fetch(`/submit_comment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ article_id: articleId, comment, csrf_token: csrfToken })
+        });
 
-    const result = await res.json();
-    console.log(result);
+        const result = await res.json();
+        console.log(result);
 
-    if (result.status === 'success') {
-        alert('Comment submitted successfully!');
-        fetchArticleComments();
-    } else {
-        alert(`Error: ${result.message}`);
+        if (result.status === 'success') {
+            alert('Comment submitted successfully!');
+            document.getElementById('comment').value = ''; // Clear the textarea
+            fetchArticleComments();
+        } else {
+            alert(`Error: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('Error submitting comment:', error);
+        alert('Failed to submit comment.');
     }
 });
 
-// Fetch comments when the page loads
-fetchArticleComments();
+// Initialize the page
+document.addEventListener('DOMContentLoaded', () => {
+    const pathSegments = window.location.pathname.split('/');
+    const articleId = pathSegments[pathSegments.length - 1];
+    if (articleId) {
+        fetchArticleById(articleId);
+    }
+    fetchArticleComments();
+});

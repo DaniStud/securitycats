@@ -1,5 +1,3 @@
-document.body.onload = fetchArticles;
-
 async function fetchArticles() {
     try {
         const response = await fetch('/get_articles');
@@ -10,6 +8,7 @@ async function fetchArticles() {
 
         if (result.status === 'success') {
             const article_section = document.getElementById("articles");
+            article_section.innerHTML = ''; // Clear existing articles
 
             result.data.forEach(article => {
                 const articleDiv = document.createElement("div");
@@ -25,7 +24,6 @@ async function fetchArticles() {
 
                 article_section.appendChild(articleDiv);
             });
-
         } else {
             console.error('Error fetching articles:', result.message);
         }
@@ -43,7 +41,7 @@ async function fetchArticleById(articleId) {
         const result = await response.json();
 
         if (result.status === 'success') {
-            console.log('Article:', result.data); // Log the article to the console
+            console.log('Article:', result.data);
         } else {
             console.error('Error fetching article:', result.message);
         }
@@ -52,5 +50,8 @@ async function fetchArticleById(articleId) {
     }
 }
 
-// Optional: fetch a specific article
-fetchArticleById(2);
+document.addEventListener('DOMContentLoaded', () => {
+    fetchArticles();
+    // Optional: fetch a specific article for testing
+    // fetchArticleById(2);
+});
