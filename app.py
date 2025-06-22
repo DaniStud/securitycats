@@ -8,10 +8,12 @@ import secrets
 from datetime import datetime, timedelta
 from flask_bcrypt import Bcrypt
 import uuid
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'your-super-super-secret-key'  # Required for session encryption
 app.config['UPLOAD_FOLDER'] = 'static/uploads'  # Folder for profile pictures
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2MB max file size
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 bcrypt = Bcrypt()
@@ -54,6 +56,11 @@ COUNTRIES = [
     'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam',
     'Yemen', 'Zambia', 'Zimbabwe'
 ]
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 ####################################
 # ROUTES
@@ -183,9 +190,15 @@ def update_profile():
         if 'profile_pic' in request.files:
             file = request.files['profile_pic']
             if file and file.filename:
-                filename = f"{uuid.uuid4()}_{file.filename}"
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                profile_pic = filename
+                if file and allowed_file(file.filename):
+                    if file.content_length <= app.config['MAX_CONTENT_LENGTH']:
+                        filename = secure_filename(f"{uuid.uuid4()}_{file.filename.rsplit('.', 1)[0]}.jpg")  # Force .jpg extension
+                        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                        profile_pic = filename
+                    else:
+                        return jsonify({'status': 'error', 'message': 'File too large (max 2MB)'}), 400
+                else:
+                    return jsonify({'status': 'error', 'message': 'Invalid file type. Only PNG, JPG, JPEG, GIF allowed.'}), 400
 
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
