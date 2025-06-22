@@ -81,7 +81,7 @@ def admin():
 @app.route('/logout')
 def logout():
     session.clear()
-    return "<h1>Logged out</h1><p><a href='/login_page'>Go back to login</a></p>"
+    return redirect(url_for('index'))
 
 @app.route('/login_page')
 def login_page():
