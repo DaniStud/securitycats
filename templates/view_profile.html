@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <a href="{{ url_for('index') }}">Security Cats</a>
+    </header>
+
+    <section>
+        <h1>User Profile</h1>
+
+        <!-- Profile Preview Section -->
+        <div class="profile-preview">
+            <h2>Profile Preview</h2>
+            {% if user_data.profile_pic %}
+                <img src="{{ url_for('static', filename='uploads/' + user_data.profile_pic) }}" alt="Profile Picture" style="max-width: 200px; max-height: 200px;">
+            {% else %}
+                <p>No profile picture uploaded.</p>
+            {% endif %}
+            <p><strong>Bio:</strong> {{ user_data.bio if user_data.bio else 'No bio set.' }}</p>
+            {% if user_data.country_visible or session.get('role') == 'admin' %}
+                <p><strong>Country:</strong> {{ user_data.country if user_data.country else 'No country set.' }}</p>
+            {% else %}
+                <p><strong>Country:</strong> (Private - not visible)</p>
+            {% endif %}
+        </div>
+    </section>
+</body>
+</html>

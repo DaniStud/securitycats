@@ -140,9 +140,8 @@ def view_user_profile(user_id):
             return "<h1>404 - User not found</h1>", 404
         cursor.close()
         conn.close()
-        # Determine visibility based on current user's role
         is_admin = session.get('role') == 'admin'
-        return render_template('user_profile_view.html', csrf_token=csrf_token, user_data=user_data, is_admin=is_admin)
+        return render_template('view_profile.html', csrf_token=csrf_token, user_data=user_data, is_admin=is_admin)
     except Exception as e:
         return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
 
@@ -348,7 +347,8 @@ def submit():
             else:
                 conn = mysql.connector.connect(**db_config)
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO articles (title, article) VALUES (%s, %s)", (sanitized_title, sanitized_article))
+                cursor.execute("INSERT INTO articles (title, article) VALUES (%s, %s)", 
+                               (sanitized_title, sanitized_article))
                 conn.commit()
                 success = True
                 error_message = 'Article submitted successfully'
@@ -462,7 +462,8 @@ def submit_comment():
                         sanitized_comment = sanitize_comment(comment)
                         conn = mysql.connector.connect(**db_config)
                         cursor = conn.cursor()
-                        cursor.execute("INSERT INTO comments (article_id, content, user_id) VALUES (%s, %s, %s)", (article_id_int, sanitized_comment, session['user_id']))
+                        cursor.execute("INSERT INTO comments (article_id, content, user_id, created_at) VALUES (%s, %s, %s, NOW())", 
+                                       (article_id_int, sanitized_comment, session['user_id']))
                         conn.commit()
                         success = True
                         error_message = 'Comment submitted successfully'
@@ -725,8 +726,7 @@ def login():
         cursor.close()
         conn.close()
         return jsonify({'status': 'error', 'message': safe_message}), 500
-    
-    
+
 @app.after_request
 def apply_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
