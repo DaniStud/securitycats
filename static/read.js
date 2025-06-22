@@ -1,6 +1,3 @@
-// Removed: const url = 'http://localhost:5500';
-
-
 // Function to fetch the article by ID and insert it into the page
 async function fetchArticleById(articleId) {
     try {
@@ -66,10 +63,9 @@ async function fetchArticleComments() {
     }
 }
 
-fetchArticleComments();
-
 function insertCommentsIntoPage(posted_comments) {
     const section = document.getElementById('posted_comments');
+    section.innerHTML = ''; // Clear existing comments
     const wrapper = document.createElement('div');
     wrapper.id = 'comments_wrapper';
     posted_comments.forEach(comment => {
@@ -78,9 +74,51 @@ function insertCommentsIntoPage(posted_comments) {
         const p = document.createElement('p');
         p.textContent = comment.content;
         commentDiv.appendChild(p);
+
+        // Add delete button only for admin or moderator
+        if (isAuthorizedToDelete()) {
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.className = 'delete-button';
+            deleteButton.onclick = () => removeComment(comment.comment_id);
+            commentDiv.appendChild(deleteButton);
+        }
+
         wrapper.appendChild(commentDiv);
     });
     section.appendChild(wrapper);
+}
+
+// Function to check if the user is authorized to delete comments
+function isAuthorizedToDelete() {
+    // Assuming role is stored in sessionStorage or fetched from an API
+    const role = sessionStorage.getItem('role'); // Adjust based on how you store the role
+    return role === 'admin' || role === 'moderator';
+}
+
+// Function to remove a comment
+async function removeComment(commentId) {
+    const csrfToken = document.getElementById('csrf_token').value;
+
+    try {
+        const res = await fetch('/remove_comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ comment_id: commentId, csrf_token: csrfToken })
+        });
+
+        const result = await res.json();
+
+        if (result.status === 'success') {
+            alert('Comment removed successfully!');
+            fetchArticleComments(); // Refresh comments
+        } else {
+            alert(`Error: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('Error removing comment:', error);
+        alert('Failed to remove comment.');
+    }
 }
 
 document.getElementById('comment_form').addEventListener('submit', async (e) => {
@@ -112,3 +150,6 @@ document.getElementById('comment_form').addEventListener('submit', async (e) => 
         alert(`Error: ${result.message}`);
     }
 });
+
+// Fetch comments when the page loads
+fetchArticleComments();

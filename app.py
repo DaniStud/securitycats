@@ -11,7 +11,7 @@ import secrets
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
-app.secret_key = 'your-super-secret-key'  # Required for session encryption
+app.secret_key = 'your-super-super-secret-key'  # Required for session encryption
 
 db_config = {
     'host': 'localhost',
@@ -24,6 +24,7 @@ db_config = {
 comment_rate_limit = {}
 login_rate_limit = {}
 article_rate_limit = {}
+signup_rate_limit = {}
 
 ####################################
 # ROUTES
@@ -34,7 +35,7 @@ def index():
 
 @app.route('/admin')
 def admin():
-    if 'user_id' not in session:
+    if 'user_id' not in session or session.get('role') != 'admin':
         return redirect(url_for('login_page'))
     csrf_token = secrets.token_hex(32)
     session['csrf_token'] = csrf_token
@@ -119,7 +120,7 @@ def get_article_with_comments(article_id):
 
 @app.route('/submit_article', methods=['POST'])
 def submit():
-    if 'user_id' not in session:
+    if 'user_id' not in session or session.get('role') != 'admin':
         # Log unauthorized attempt
         ip = request.remote_addr
         now = datetime.utcnow()
@@ -128,12 +129,12 @@ def submit():
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO article_attempts (timestamp, ip_address, username, success, error_message) VALUES (%s, %s, %s, %s, %s)",
-            (now, ip, username, False, 'Authentication required')
+            (now, ip, username, False, 'Admin access required')
         )
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+        return jsonify({'status': 'error', 'message': 'Admin access required'}), 403
     
     try:
         ip = request.remote_addr
@@ -235,6 +236,12 @@ def submit():
 
 @app.route('/submit_comment', methods=['POST'])
 def submit_comment():
+    if 'user_id' not in session:
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+    allowed_roles = ['user', 'moderator', 'admin']
+    if session.get('role') not in allowed_roles:
+        return jsonify({'status': 'error', 'message': 'Permission denied'}), 403
+
     try:
         ip = request.remote_addr
         now = datetime.utcnow()
@@ -341,6 +348,116 @@ def submit_comment():
         conn.close()
         return jsonify({'status': 'error', 'message': safe_message}), 500
 
+@app.route('/remove_comment', methods=['POST'])
+def remove_comment():
+    if 'user_id' not in session:
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+    allowed_roles = ['moderator', 'admin']
+    if session.get('role') not in allowed_roles:
+        return jsonify({'status': 'error', 'message': 'Permission denied'}), 403
+
+    try:
+        data = request.get_json()
+        comment_id = data.get('comment_id')
+        client_csrf_token = data.get('csrf_token')
+        server_csrf_token = session.get('csrf_token')
+        csrf_expiry = session.get('csrf_token_expiry')
+
+        if not client_csrf_token or not server_csrf_token or client_csrf_token != server_csrf_token:
+            return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
+        elif not csrf_expiry or datetime.utcnow().timestamp() > csrf_expiry:
+            session.pop('csrf_token', None)
+            session.pop('csrf_token_expiry', None)
+            return jsonify({'status': 'error', 'message': 'CSRF token expired'}), 403
+        elif not comment_id:
+            return jsonify({'status': 'error', 'message': 'Comment ID is required'}), 400
+
+        try:
+            comment_id_int = int(comment_id)
+            if comment_id_int <= 0:
+                return jsonify({'status': 'error', 'message': 'Comment ID must be a positive integer'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'status': 'error', 'message': 'Comment ID must be a positive integer'}), 400
+
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM comments WHERE comment_id = %s", (comment_id_int,))
+        if cursor.rowcount > 0:
+            conn.commit()
+            session.pop('csrf_token', None)
+            session.pop('csrf_token_expiry', None)
+            return jsonify({'status': 'success', 'message': 'Comment removed successfully'})
+        else:
+            conn.rollback()
+            return jsonify({'status': 'error', 'message': 'Comment not found'}), 404
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        safe_message = re.sub(r'[^a-zA-Z0-9 .,!?@#\-_"]', '', str(e))[:200]
+        return jsonify({'status': 'error', 'message': safe_message}), 500
+
+@app.route('/signup', methods=['POST'])
+def signup():
+    try:
+        # Rate limiting: max 5 signups per 20 minutes per IP
+        ip = request.remote_addr
+        now = datetime.utcnow()
+        window_start = now - timedelta(minutes=20)
+        if ip not in signup_rate_limit:
+            signup_rate_limit[ip] = []
+        signup_rate_limit[ip] = [t for t in signup_rate_limit[ip] if t > window_start]
+        if len(signup_rate_limit[ip]) >= 5:
+            return jsonify({'status': 'error', 'message': 'Too many signup attempts. Please wait and try again.'}), 429
+        signup_rate_limit[ip].append(now)
+
+        data = request.get_json()
+        name = data.get('name')
+        password = data.get('password')
+        client_csrf_token = data.get('csrf_token')
+        server_csrf_token = session.get('csrf_token')
+        csrf_expiry = session.get('csrf_token_expiry')
+
+        # Validate CSRF token
+        if not client_csrf_token or not server_csrf_token or client_csrf_token != server_csrf_token:
+            return jsonify({'status': 'error', 'message': 'Invalid CSRF token'}), 403
+        elif not csrf_expiry or datetime.utcnow().timestamp() > csrf_expiry:
+            session.pop('csrf_token', None)
+            session.pop('csrf_token_expiry', None)
+            return jsonify({'status': 'error', 'message': 'CSRF token expired'}), 403
+
+        # Validate inputs
+        if not name or not password:
+            return jsonify({'status': 'error', 'message': 'Name and password are required'}), 400
+        if len(name) > 50 or not re.match(r'^[a-zA-Z0-9_.-]+$', name):
+            return jsonify({'status': 'error', 'message': 'Invalid username'}), 400
+        if len(password) < 12 or not re.search(r'[A-Z]', password) or not re.search(r'[a-z]', password) or not re.search(r'[0-9]', password) or not re.search(r'[^a-zA-Z0-9]', password):
+            return jsonify({'status': 'error', 'message': 'Password must be at least 12 characters with upper, lower, digit, and special character'}), 400
+
+        # Check if username already exists
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE name = %s", (name,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'status': 'error', 'message': 'Username already exists'}), 409
+
+        # Hash password and insert user with default role 'user'
+        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+        cursor.execute("INSERT INTO users (name, password, role) VALUES (%s, %s, %s)", (name, hashed_password, 'user'))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        session.pop('csrf_token', None)
+        session.pop('csrf_token_expiry', None)
+        return jsonify({'status': 'success', 'message': 'Signup successful'})
+
+    except Exception as e:
+        safe_message = re.sub(r'[^a-zA-Z0-9 .,!?@#\-_"]', '', str(e))[:200]
+        return jsonify({'status': 'error', 'message': safe_message}), 500
+
 @app.route('/login', methods=['POST'])
 def login():
     try:
@@ -415,8 +532,18 @@ def login():
                 if user and bcrypt.check_password_hash(user['password'], password):
                     session['user_id'] = user['id']
                     session['name'] = user['name']
+                    session['role'] = user['role']  # Store the role in session
                     success = True
                     error_message = 'Login successful'
+                    # Redirect based on role
+                    if user['role'] == 'admin':
+                        redirect_url = '/admin'
+                    elif user['role'] == 'moderator':
+                        redirect_url = '/'  # Adjust as needed for moderator page
+                    elif user['role'] == 'user':
+                        redirect_url = '/'  # Default to index for users
+                    else:
+                        redirect_url = '/'  # Default fallback
                 else:
                     error_message = 'Invalid username or password'
                 cursor.close()
@@ -434,7 +561,7 @@ def login():
         conn.close()
 
         if success:
-            return jsonify({'status': 'success', 'message': 'Login successful'})
+            return jsonify({'status': 'success', 'message': 'Login successful', 'redirect': redirect_url})
         else:
             safe_message = re.sub(r'[^a-zA-Z0-9 .,!?@#\-_"]', '', error_message)[:200]
             status_code = 403 if 'CSRF' in error_message else 401 if 'Invalid username' in error_message else 400

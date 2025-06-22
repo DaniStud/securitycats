@@ -8,35 +8,62 @@
 
     <title>{{ article.title }}</title>
 
+    <style>
+        .comment {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            position: relative;
+        }
+        .delete-button {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            padding: 5px 10px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .delete-button:hover {
+            background-color: #cc0000;
+        }
+    </style>
 </head>
 <body>
-        <header>
+    <header>
         <a href="{{ url_for('index') }}">Security Cats</a>        
-        </header>
+    </header>
 
-        <section>
-            <h1>{{ article.title|e }}</h1>
-            <p>{{ article.article|e }}</p>
-        </section>
+    <section>
+        <h1>{{ article.title|e }}</h1>
+        <p>{{ article.article|e }}</p>
+    </section>
 
-        <section id="comment_section">
-
-            <form id="comment_form">
+    <section id="comment_section">
+        <form id="comment_form">
+            <div>
                 <div>
+                    <label for="article">Write your comment here</label>
                 </div>
-                        <div>
-                    <div>
-                        <label for="article">Write your comment here</label>
-                    </div>
-                    <input type="text" id="comment" name="comment">
-                </div>
-                <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token }}">
-                <input type="submit" value="Submit">    
-            </form> 
+                <input type="text" id="comment" name="comment">
+            </div>
+            <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token }}">
+            <input type="submit" value="Submit">    
+        </form> 
 
+        <div id="posted_comments"></div>
 
-            <div id="posted_comments"></div>
+        <!-- Hidden input to pass role to JavaScript -->
+        <input type="hidden" id="user_role" value="{{ session.get('role', 'user') }}">
+    </section>
 
-        </section>
+    <script>
+        // Set the role in sessionStorage when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const role = document.getElementById('user_role').value;
+            sessionStorage.setItem('role', role);
+        });
+    </script>
 </body>
 </html>
