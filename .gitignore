@@ -1,0 +1,1 @@
+pycache/ *.pyc *.pyo .pyd .env static/uploads/!static/uploads/.gitkeep
