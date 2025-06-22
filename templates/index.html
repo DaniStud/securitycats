@@ -9,7 +9,12 @@
 <body>
     <header>
         <a href="/">Security Cats</a>
-        <a href="/logout">Logout</a>
+        <a href="/user_profile">Profile</a>
+        {% if 'user_id' in session %}
+            <a href="/logout">Logout</a>
+        {% else %}
+            <a href="/login_page">Login</a>
+        {% endif %}
     </header>
     <section id="articles">
         <!-- Articles will be inserted here by JavaScript -->

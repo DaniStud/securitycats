@@ -112,6 +112,26 @@ def render_article(article_id):
 
 @app.route('/users')
 def users_list():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        # Log unauthorized attempt
+        ip = request.remote_addr
+        now = datetime.utcnow()
+        username = session.get('name', 'anonymous')
+        try:
+            conn = mysql.connector.connect(**db_config)
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO access_attempts (timestamp, ip_address, username, route, success, error_message) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (now, ip, username, '/users', False, 'Admin access required')
+            )
+            conn.commit()
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            print(f"Error logging access attempt: {e}")
+        return redirect(url_for('login_page'))
+
     csrf_token = secrets.token_hex(32)
     session['csrf_token'] = csrf_token
     session['csrf_token_expiry'] = (datetime.utcnow() + timedelta(minutes=30)).timestamp()
@@ -125,6 +145,7 @@ def users_list():
         return render_template('users.html', csrf_token=csrf_token, users=users)
     except Exception as e:
         return f"<h1>500 - Server Error</h1><p>{e}</p>", 500
+
 
 @app.route('/user_profile/<int:user_id>')
 def view_user_profile(user_id):
