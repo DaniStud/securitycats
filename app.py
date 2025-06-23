@@ -25,7 +25,8 @@ db_config = {
     'host': os.environ.get('MYSQL_HOST', 'localhost'),
     'user': os.environ.get('MYSQL_USER', 'root'),
     'password': os.environ.get('MYSQL_PASSWORD', ''),
-    'database': os.environ.get('MYSQL_DATABASE', 'securitycats')
+    'database': os.environ.get('MYSQL_DATABASE', 'securitycats'),
+    'port': 3306
 }
 
 # In-memory rate limit store: {ip: [datetime, ...]}
