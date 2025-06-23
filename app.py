@@ -22,11 +22,11 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 bcrypt = Bcrypt()
 
 db_config = {
-    'host': os.environ.get('MYSQL_HOST', 'localhost'),
-    'user': os.environ.get('MYSQL_USER', 'root'),
-    'password': os.environ.get('MYSQL_PASSWORD', ''),
-    'database': os.environ.get('MYSQL_DATABASE', 'securitycats'),
-    'port': 3306
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASS', ''),
+    'database': os.environ.get('DB_NAME', 'securitycats'),
+    'port': int(os.environ.get('DB_PORT', 3306))
 }
 
 # In-memory rate limit store: {ip: [datetime, ...]}
